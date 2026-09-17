@@ -1,0 +1,23 @@
+{
+  "name": "librea",
+  "version": "0.1.0",
+  "description": "Sovereign, vector-native student & district information system with a vibe-coding layer on top. Data stays in the building.",
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "seed": "node scripts/seed.js",
+    "test": "node --test tests/",
+    "build": "node scripts/check.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.125.0",
+    "@huggingface/transformers": "^4.2.0",
+    "better-sqlite3": "^12.11.1",
+    "ruvector": "^0.3.0"
+  }
+}

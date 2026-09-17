@@ -1,0 +1,4 @@
+sourcedId,status,dateLastModified,name,type,identifier,parentSourcedId
+org-district,active,2026-08-15T09:12:00Z,Eastlake Unified School District,district,EUSD,
+org-eastlake,active,2026-08-15T09:12:00Z,Eastlake Elementary,school,EL01,org-district
+org-brightwater,active,2026-08-15T09:12:00Z,Brightwater Middle,school,BW01,org-district

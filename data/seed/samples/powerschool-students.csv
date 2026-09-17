@@ -1,0 +1,13 @@
+Student_Number,First_Name,Last_Name,Grade_Level,SchoolID,School_Name,DOB,Gender,Enroll_Status,Home_Phone,Mother,Father,Guardian_Email,LunchStatus,ELL_Status,SpecialEd,GPA,ADA
+700001,Amara,Okonkwo,4,201,Riverside Elementary,3/7/2015,F,0,555-0142,"Okonkwo, Ngozi",Chidi Okonkwo,ngozi.okonkwo@example.org,Free,Newcomer,,2.2,93.4
+700002,Theo,Vasquez,4,201,Riverside Elementary,11/21/2014,M,0,555-0198,"Vasquez, Mirela",,mirela.vasquez@example.org,Reduced,EO,504,3.1,96.8
+700003,Priya,Raman,5,201,Riverside Elementary,6/2/2014,F,0,555-0177,"Raman, Anjali",Suresh Raman,anjali.raman@example.org,Paid,RFEP,,3.8,98.1
+700004,Dominic,Fairbanks,5,201,Riverside Elementary,1/14/2014,M,0,555-0121,"Fairbanks, Rhea",,rhea.fairbanks@example.org,Free,EO,IEP,1.9,81.2
+700005,Lena,Shackleton,3,201,Riverside Elementary,9/30/2016,F,0,555-0155,"Shackleton, Maeve",Cormac Shackleton,maeve.shackleton@example.org,Paid,EO,,3.4,97.0
+700006,Hassan,Belkacem,6,202,Northgate Middle,4/18/2013,M,0,555-0163,"Belkacem, Yasmine",Karim Belkacem,yasmine.belkacem@example.org,Free,Intermediate,,2.7,89.5
+700007,Willa,Okafor-Grant,7,202,Northgate Middle,8/9/2012,F,0,555-0134,"Grant, Simone",,simone.grant@example.org,Reduced,EO,504,3.0,94.2
+700008,Marcus,Delacroix,7,202,Northgate Middle,2/27/2012,M,0,555-0189,"Delacroix, Adele",Jules Delacroix,adele.delacroix@example.org,Paid,EO,,2.4,86.7
+700009,Sunniva,Haugen,8,202,Northgate Middle,12/5/2011,F,0,555-0102,"Haugen, Ingrid",,ingrid.haugen@example.org,Paid,EO,,3.9,99.0
+700010,Elias,Moreno-Tran,9,203,Summit High,7/16/2010,M,0,555-0147,"Tran, Bích",Rafael Moreno,bich.tran@example.org,Free,Beginner,IEP,2.0,78.4
+700011,Zuri,Adeyemi,10,203,Summit High,5/3/2009,F,0,555-0119,"Adeyemi, Folake",Tunde Adeyemi,folake.adeyemi@example.org,Reduced,Advanced,,3.5,95.6
+700012,Kai,Brennerman,11,203,Summit High,10/22/2008,M,2,555-0126,"Brennerman, Solveig",,solveig.brennerman@example.org,Paid,EO,,2.9,91.3

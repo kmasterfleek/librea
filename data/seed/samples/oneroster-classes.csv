@@ -1,0 +1,6 @@
+sourcedId,status,title,classCode,classType,courseSourcedId,schoolSourcedId,termSourcedIds,periods,subjects,grades
+cls-math4a,active,Mathematics 4 Section A,MATH4-A,scheduled,crs-math4,org-eastlake,term-f2026,2,Mathematics,04
+cls-ela4a,active,English Language Arts 4 Section A,ELA4-A,scheduled,crs-ela4,org-eastlake,term-f2026,3,English,04
+cls-sci7b,active,Life Science 7 Section B,SCI7-B,scheduled,crs-sci7,org-brightwater,term-f2026,1,Science,07
+cls-band1,active,Concert Band,BAND-1,extracurricular,crs-band,org-brightwater,term-f2026,7,Music,07
+cls-robo1,active,Robotics Club,ROBO-1,extracurricular,crs-robo,org-brightwater,term-f2026,8,Engineering,07

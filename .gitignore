@@ -1,0 +1,31 @@
+# Ruflo local secrets and runtime data
+.env
+.env.local
+.env.*.local
+.claude-flow/data/
+.claude-flow/logs/
+.claude-flow/sessions/
+
+# Librea sovereign data: stays on this machine, never in a repo
+data/ledger.jsonl
+data/vectors.db
+data/snapshot.json
+data/users.json
+data/media/
+data/apps/
+data/models/
+node_modules/
+
+# Not part of Librea: local copy of the upstream ruvector repo, ruflo runtime state, OS files
+RuVector-main 2/
+ruvector.db
+.swarm/
+.claude-flow/
+.DS_Store
+data/librea.sqlite
+data/librea.sqlite-shm
+data/librea.sqlite-wal
+
+# ruflo-generated Claude Code boilerplate (regenerate with `npx ruflo init`); keep only settings
+.claude/*
+!.claude/settings.json

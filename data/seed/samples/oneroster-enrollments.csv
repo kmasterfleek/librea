@@ -1,0 +1,14 @@
+sourcedId,status,classSourcedId,schoolSourcedId,userSourcedId,role,primary,beginDate,endDate
+enr-0001,active,cls-math4a,org-eastlake,onr-7001,student,true,2026-08-17,2026-12-19
+enr-0002,active,cls-math4a,org-eastlake,onr-7002,student,true,2026-08-17,2026-12-19
+enr-0003,active,cls-math4a,org-eastlake,onr-7003,student,true,2026-08-17,2026-12-19
+enr-0004,active,cls-ela4a,org-eastlake,onr-7001,student,true,2026-08-17,2026-12-19
+enr-0005,active,cls-ela4a,org-eastlake,onr-7004,student,true,2026-08-17,2026-12-19
+enr-0006,active,cls-math4a,org-eastlake,onr-9001,teacher,true,2026-08-17,2026-12-19
+enr-0007,active,cls-sci7b,org-brightwater,onr-7007,student,true,2026-08-17,2026-12-19
+enr-0008,active,cls-sci7b,org-brightwater,onr-7008,student,true,2026-08-17,2026-12-19
+enr-0009,active,cls-band1,org-brightwater,onr-7007,student,false,2026-08-17,2026-12-19
+enr-0010,active,cls-band1,org-brightwater,onr-7009,student,false,2026-08-17,2026-12-19
+enr-0011,active,cls-robo1,org-brightwater,onr-7007,student,false,2026-08-17,2026-12-19
+enr-0012,active,cls-robo1,org-brightwater,onr-7010,student,false,2026-08-17,2026-12-19
+enr-0013,active,cls-sci7b,org-brightwater,onr-9002,teacher,true,2026-08-17,2026-12-19

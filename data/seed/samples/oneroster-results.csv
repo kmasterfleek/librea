@@ -1,0 +1,13 @@
+sourcedId,status,lineItemSourcedId,studentSourcedId,score,scoreStatus,scoreDate,comment
+res-0001,active,li-m4-q1,onr-7001,18,fully graded,2026-09-11,Strong work
+res-0002,active,li-m4-t1,onr-7001,72,fully graded,2026-09-22,Review decimals
+res-0003,active,li-m4-hw3,onr-7001,,not submitted,,
+res-0004,active,li-m4-proj,onr-7001,44,fully graded,2026-10-14,
+res-0005,active,li-m4-q1,onr-7002,20,fully graded,2026-09-11,
+res-0006,active,li-m4-t1,onr-7002,95,fully graded,2026-09-22,
+res-0007,active,li-m4-hw3,onr-7002,10,fully graded,2026-09-23,
+res-0008,active,li-m4-proj,onr-7002,48,fully graded,2026-10-14,Excellent
+res-0009,active,li-m4-q1,onr-7003,11,fully graded,2026-09-11,Needs review
+res-0010,active,li-m4-t1,onr-7003,58,fully graded,2026-09-22,
+res-0011,active,li-m4-hw3,onr-7003,,not submitted,,
+res-0012,active,li-m4-proj,onr-7003,,exempt,,Absent for project week

@@ -1,0 +1,13 @@
+ID,SN,FN,LN,GR,SC,School_Name,SX,BD,LF,SP,NP,PEM,TL,NSLP,GPA
+800001,840001,Rosalind,Tapia,K,1,Willow Creek Elementary,F,2019-08-14,E,,Carmen Tapia,carmen.tapia@example.org,555-0211,P,
+800002,840002,Ignatius,Whitlock,1,1,Willow Creek Elementary,M,2018-03-29,E,R,Deborah Whitlock,deborah.whitlock@example.org,555-0233,F,
+800003,840003,Meilin,Zhao,2,1,Willow Creek Elementary,F,2017-11-02,L,,Wei Zhao,wei.zhao@example.org,555-0244,R,
+800004,840004,Obadiah,Fitzgerald,3,1,Willow Creek Elementary,M,2016-06-21,E,S,Nora Fitzgerald,nora.fitzgerald@example.org,555-0255,F,2.1
+800005,840005,Anneliese,Kohl,4,1,Willow Creek Elementary,F,2015-09-09,E,,Bettina Kohl,bettina.kohl@example.org,555-0266,P,3.6
+800006,840006,Tavian,Oyelaran,5,1,Willow Creek Elementary,M,2014-12-17,R,,Adebola Oyelaran,adebola.oyelaran@example.org,555-0277,R,2.8
+800007,840007,Cordelia,Marchetti,6,2,Cypress Junior High,F,2013-05-30,E,,Giulia Marchetti,giulia.marchetti@example.org,555-0288,P,3.3
+800008,840008,Sahil,Bhandari,7,2,Cypress Junior High,M,2012-10-11,L,R,Priyanka Bhandari,priyanka.bhandari@example.org,555-0299,F,2.4
+800009,840009,Juniper,Ashwood,8,2,Cypress Junior High,F,2011-07-25,E,,Halle Ashwood,halle.ashwood@example.org,555-0300,P,3.9
+800010,840010,Emeka,Nwachukwu,9,3,Grandview High,M,2010-02-08,F,,Chinelo Nwachukwu,chinelo.nwachukwu@example.org,555-0311,R,3.0
+800011,840011,Saoirse,Dunleavy,10,3,Grandview High,F,2009-04-19,E,,Aoife Dunleavy,aoife.dunleavy@example.org,555-0322,F,1.8
+800012,840012,Ravi,Chandrasekar,11,3,Grandview High,M,2008-01-27,L,,Latha Chandrasekar,latha.chandrasekar@example.org,555-0333,P,3.7

@@ -1,0 +1,6 @@
+sourcedId,status,title,courseCode,orgSourcedId,subjects,grades
+crs-math4,active,Mathematics 4,MATH4,org-eastlake,Mathematics,04
+crs-ela4,active,English Language Arts 4,ELA4,org-eastlake,English,04
+crs-sci7,active,Life Science 7,SCI7,org-brightwater,Science,07
+crs-band,active,Concert Band,BAND,org-brightwater,Music,07
+crs-robo,active,Robotics,ROBO,org-brightwater,Engineering,07

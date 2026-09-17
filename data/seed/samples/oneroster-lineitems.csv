@@ -1,0 +1,5 @@
+sourcedId,status,title,description,classSourcedId,category,assignDate,dueDate,resultValueMin,resultValueMax,gradingPeriodSourcedId
+li-m4-q1,active,Fractions Quiz,Equivalent fractions,cls-math4a,Quiz,2026-09-08,2026-09-10,0,20,term-f2026
+li-m4-t1,active,Unit 1 Test,Fractions and decimals,cls-math4a,Test,2026-09-15,2026-09-20,0,100,term-f2026
+li-m4-hw3,active,Homework 3,Practice set 3,cls-math4a,Homework,2026-09-21,2026-09-22,0,10,term-f2026
+li-m4-proj,active,Fraction Poster Project,Group poster,cls-math4a,Project,2026-10-01,2026-10-12,0,50,term-f2026

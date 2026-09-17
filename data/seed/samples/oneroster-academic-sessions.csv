@@ -1,0 +1,4 @@
+sourcedId,status,title,type,startDate,endDate,schoolYear,parentSourcedId
+ay-2026,active,2026-2027 School Year,schoolYear,2026-08-17,2027-06-11,2027,
+term-f2026,active,Fall Term,term,2026-08-17,2026-12-19,2027,ay-2026
+term-s2027,active,Spring Term,term,2027-01-06,2027-06-11,2027,ay-2026
