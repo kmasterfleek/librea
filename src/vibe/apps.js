@@ -115,7 +115,7 @@ export class AppStore {
    * Save a generated document. Creates the app on first save, appends a version
    * on every later one. Returns the updated manifest.
    */
-  save({ slug, title, prompt, html, provider, model, scope, user, warnings = [], templateGenerated = false }) {
+  save({ slug, title, prompt, html, provider, model, scope, user, warnings = [], templateGenerated = false, design = null, bindings = null }) {
     if (!isValidSlug(slug)) throw new HttpError(400, 'bad slug');
     if (typeof html !== 'string' || html.length < 30) throw new HttpError(400, 'generated document is empty');
     const prev = this.get(slug);
@@ -136,6 +136,7 @@ export class AppStore {
       published: prev?.published ?? false,
       templateGenerated: !!templateGenerated,
       warnings,
+      ...(design ? { mode: 'design', design, bindings: bindings || {} } : {}),
       history: [...(prev?.history || []), { version, prompt: String(prompt || '').slice(0, 4000), createdAt: now, by: user.username }].slice(-50),
     };
     this.store.upsertApp(app, user.username);
@@ -150,6 +151,7 @@ export class AppStore {
     if (patch.title != null) next.title = String(patch.title).trim().slice(0, 120) || app.title;
     if (patch.published != null) next.published = !!patch.published;
     if (patch.scope != null) next.scope = normalizeScope(patch.scope);
+    if (patch.bindings != null) next.bindings = patch.bindings;
     this.store.upsertApp(next, user.username);
     return next;
   }

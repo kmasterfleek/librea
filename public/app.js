@@ -125,6 +125,7 @@ const ROUTES = [
   { path: 'data', load: () => import('/js/data.js'), nav: 'Data', roles: '*' },
   { path: 'import', load: () => import('/js/import.js'), nav: 'Import', roles: ['admin'] },
   { path: 'build', load: () => import('/js/build.js'), nav: 'Build', roles: '*' },
+  { path: 'design', load: () => import('/js/design.js'), nav: 'Design', roles: '*' },
   { path: 'apps', load: () => import('/js/apps.js'), nav: 'Apps', roles: '*' },
   { path: 'accounts', load: () => import('/js/accounts.js'), nav: 'Accounts', roles: ['admin'] },
 ];

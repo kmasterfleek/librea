@@ -5,11 +5,12 @@ import { HttpError } from '../api/router.js';
 import { canSeeEntity, projectEntity } from '../api/context.js';
 import { DIMENSIONS, DIM_KEYS, FRAGMENT_KINDS, VISIBILITY, STUDENT_METRICS, ENTITY_TYPES } from '../core/schema.js';
 import { runScoped, schemaFor } from '../sql/query.js';
+import { runBindings } from './bind.js';
 
 /** Minimum group size before an aggregate is reported to an aggregates-only app. */
 export const K_ANON = 5;
 
-const OPS = ['stats', 'people', 'person', 'fragments', 'search', 'similar', 'aggregate', 'addFragment', 'schema', 'me', 'sql', 'sqlSchema'];
+const OPS = ['stats', 'people', 'person', 'fragments', 'search', 'similar', 'aggregate', 'addFragment', 'schema', 'me', 'sql', 'sqlSchema', 'bindings'];
 const GROUPS = ['schoolId', 'grade', 'outcome', 'flag'];
 
 // ---------- boundary validation ----------
@@ -81,6 +82,7 @@ export async function runQuery({ op, args = {} }, ctx, store, deps = {}) {
     case 'addFragment': return addFragment(args, ctx, store);
     case 'sql': return sql(args, scope, deps);
     case 'sqlSchema': return schemaFor(scope);
+    case 'bindings': return runBindings(ctx.app, ctx, store, deps, runQuery);
     default: throw new HttpError(400, `unknown op: ${name}`);
   }
 }

@@ -71,11 +71,11 @@ export function shellPage(app, { version, user }) {
 <body>
 <header>
   <h1>${esc(app.title)}</h1>
-  <span class="by">by ${esc(app.author?.displayName || app.author?.username || 'unknown')}${app.templateGenerated ? ' &middot; built offline from a Librea template' : ''}</span>
+  <span class="by">by ${esc(app.author?.displayName || app.author?.username || 'unknown')}${app.templateGenerated ? ' &middot; built offline from a Librea template' : ''}${app.mode === 'design' ? ' &middot; designed, then bound to data here' : ''}</span>
   <span class="badge" title="Enforced on the server, not in the page">${esc(badge)}</span>
   ${draft}
   <nav>
-    <a href="/#/build?remix=${encodeURIComponent(app.slug)}">Remix</a>
+    <a href="${app.mode === 'design' ? '/#/design?slug=' : '/#/build?remix='}${encodeURIComponent(app.slug)}">${app.mode === 'design' ? 'Revise' : 'Remix'}</a>
     <a href="/">Librea</a>
   </nav>
 </header>

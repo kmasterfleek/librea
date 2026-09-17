@@ -7,12 +7,15 @@ import { getProvider, providerInfo, providerName, whatLeaves } from './providers
 import { buildSystemPrompt, buildMessages, extractHtml } from './prompt.js';
 import { runQuery } from './query.js';
 import { RUNTIME_JS } from './runtime.js';
+import { BINDER_JS } from './runtime-bind.js';
+import { registerDesign, assertPublishable, designSummary } from './routes-design.js';
 import { shellPage, signInPage } from './shell.js';
 
 const CSP = "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; connect-src 'none'; frame-ancestors 'self'";
 
 export function register(router, { store, dataDir, sql }) {
   const apps = new AppStore(store, dataDir);
+  registerDesign(router, { apps, store, sql });
 
   // ---- what the provider is, and what leaves the building ----
   router.get('/api/vibe/provider', () => ({ provider: providerInfo(), whatLeaves: whatLeaves() }));
@@ -37,6 +40,7 @@ export function register(router, { store, dataDir, sql }) {
       prior = apps.get(slug);
       if (!prior) throw new HttpError(404, 'no such app');
       if (!apps.canEdit(prior, user)) throw new HttpError(403, 'not your app');
+      if (prior.mode === 'design') throw new HttpError(400, 'that app is a design; revise it on the Design page');
     } else {
       slug = uniqueSlug(slugify(body.title || prompt), new Set(store.apps.keys()));
     }
@@ -87,7 +91,9 @@ export function register(router, { store, dataDir, sql }) {
 
   router.post('/api/apps/:slug/publish', (ctx) => {
     const user = requireUser(ctx);
-    const app = apps.update(ctx.params.slug, { published: !!(ctx.body || {}).published }, user);
+    const wanted = !!(ctx.body || {}).published;
+    if (wanted) { const cur = apps.get(ctx.params.slug); if (cur) assertPublishable(cur); }
+    const app = apps.update(ctx.params.slug, { published: wanted }, user);
     return { app: summary(app, apps, user) };
   });
 
@@ -135,7 +141,7 @@ export function register(router, { store, dataDir, sql }) {
     if (!app) throw new HttpError(404, 'no such app');
     if (!app.published && !apps.canEdit(app, ctx.user)) throw new HttpError(404, 'no such app');
     const version = pickVersion(apps, app, ctx.query.v);
-    const html = injectRuntime(apps.readHtml(app.slug, version));
+    const html = injectRuntime(apps.readHtml(app.slug, version), { binder: app.mode === 'design' });
     sendHtml(ctx.res, html, {
       'content-security-policy': CSP,
       'x-frame-options': 'SAMEORIGIN',
@@ -148,7 +154,8 @@ export function register(router, { store, dataDir, sql }) {
 // ---------------------------------------------------------------- helpers
 
 function summary(app, apps, user) {
-  return { ...app, url: `/a/${app.slug}`, scopeBadge: scopeBadge(app.scope), editable: apps.canEdit(app, user), versions: apps.versions(app.slug) };
+  const { design, bindings, ...rest } = app;
+  return { ...rest, ...designSummary(app), url: `/a/${app.slug}`, scopeBadge: scopeBadge(app.scope), editable: apps.canEdit(app, user), versions: apps.versions(app.slug) };
 }
 
 function pickVersion(apps, app, raw) {
@@ -192,9 +199,9 @@ export function logBrokerError(store, ctx, body, err) {
   } catch { /* logging must never break a request */ }
 }
 
-/** The runtime goes in first, before anything the model wrote can run. */
-export function injectRuntime(html) {
-  const tag = `<script>${RUNTIME_JS}</script>`;
+/** The runtime goes in first, before anything the model wrote can run. A design gets the binder too. */
+export function injectRuntime(html, { binder = false } = {}) {
+  const tag = `<script>${RUNTIME_JS}</script>` + (binder ? `\n<script>${BINDER_JS}</script>` : '');
   const head = /<head[^>]*>/i.exec(html);
   if (head) return html.slice(0, head.index + head[0].length) + '\n' + tag + html.slice(head.index + head[0].length);
   const htmlTag = /<html[^>]*>/i.exec(html);

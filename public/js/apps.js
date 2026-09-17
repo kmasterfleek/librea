@@ -21,14 +21,16 @@ function card(app) {
   return h('div.card',
     h('div.spread',
       h('h2', { style: 'margin:0;font-size:1.05rem' }, app.title || app.slug),
-      h('span.chip', app.published ? 'Published' : 'Draft')),
+      h('span', app.mode === 'design' ? h('span.chip', { style: 'margin-right:6px', title: 'Designed without seeing the data, then bound to queries here' }, 'Design') : null, h('span.chip', app.published ? 'Published' : 'Draft'))),
     h('p.small.muted', { style: 'margin:2px 0 8px' },
       `${app.author?.username || 'someone'} · ${app.author?.role || ''} · updated ${when(app.updatedAt || app.createdAt)} · v${app.version ?? 1}`),
     h('p.small', { style: 'margin:0 0 10px' }, app.prompt ? truncate(app.prompt, 180) : ''),
     h('div.row', app.scopeBadge ? [h('span.chip', { title: 'What this app is allowed to see' }, app.scopeBadge), ...scopeBadges(app.scope)] : scopeBadges(app.scope)),
     h('div.row', { style: 'margin-top:12px' },
       h('a.btn.ghost.small', { href: url, target: '_blank', rel: 'noopener' }, 'Open'),
-      h('button.btn.ghost.small', { onclick: () => go('/build?remix=' + app.slug) }, 'Remix'),
+      app.mode === 'design'
+        ? (canDelete ? h('button.btn.ghost.small', { onclick: () => go('/design?slug=' + app.slug) }, app.unbound?.length ? 'Bind data' : 'Data sources') : h('button.btn.ghost.small', { onclick: () => go('/design') }, 'Reuse design'))
+        : h('button.btn.ghost.small', { onclick: () => go('/build?remix=' + app.slug) }, 'Remix'),
       canDelete ? h('button.btn.danger.small', { onclick: (e) => remove(app, e.target) }, 'Delete') : null),
   );
 }
