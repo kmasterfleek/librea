@@ -1,4 +1,4 @@
-# Ruflo local secrets and runtime data
+# local secrets and runtime data
 .env
 .env.local
 .env.*.local
@@ -38,3 +38,7 @@ data/invites.json
 
 # local ruflo hook wiring; references helper scripts that are not part of Librea
 .claude/settings.json
+
+# local agent-tooling config (ruflo MCP server, agent skills); not part of Librea
+.mcp.json
+.agents/
