@@ -1,16 +1,55 @@
 # Librea
 
-Librea is a student information system that runs on a computer your school owns. Every change is written to a hash-chained ledger on disk, and everything else — the searchable vectors, the SQLite database, the app catalogue — is a projection rebuilt from that ledger. On top of it sits a vibe-coding layer: describe the tool you need in a sentence and Librea writes it as a sandboxed page that reads your data through a scoped, server-enforced broker.
+**A student information system your school owns.** Free, open source, and running on a computer you control. Nobody sells the data, nobody rents it back to you, and nobody can turn it off.
 
-It is a single Node process, four runtime dependencies, no build step, no cloud account, and no vendor who can raise your price or hold your export hostage.
+Librea is for two kinds of people who are tired of the same thing from different directions.
 
-## Who it is for
+## If you run a school or a district
 
-- **School districts.** The default `district` edition speaks the usual vocabulary and imports from PowerSchool, Aeries, Infinite Campus, or OneRoster CSV.
-- **Microschools, pods and co-ops — Librea Micro.** `LIBREA_EDITION=micro` renames districts to communities, students to learners, staff to guides, and swaps import-first onboarding for typing your community in by hand.
-- **Alternative and independent schools — Librea Alt.** `LIBREA_EDITION=alt` keeps the state's vocabulary (with teacher→advisor, principal→director) and changes what the school watches: credits, plans and their review dates, and students who enrolled mid-year.
+You already know the deal you are in. Your student information system belongs to a vendor. Your data lives on their servers. You pay every year for the right to see it, the export button gives you a spreadsheet that isn't really your records, and the procurement process that got you here took longer than the software will last. When they get breached, and they do, the letter to families comes from you.
+
+Librea keeps everything about your students, staff, and families on a machine in your building or a server you rent under your own name. It imports the exports you already have from PowerSchool, Aeries, Infinite Campus, or OneRoster, so nothing has to be re-typed. It records attendance, grades, discipline, services, plans, and enrollment history the way the state expects to see them, and it keeps a tamper-evident log of every change so you can prove what happened and when.
+
+Two things it does that your current system does not:
+
+- **It sees the whole child.** Every student is more than a grade point average. Librea keeps the structured record and also the voice: what teachers observed, what the student says about themselves, what families add. You can ask it questions in plain language, like "which fourth graders light up around building things," and get answers from what people actually wrote.
+- **Your staff build their own tools.** A teacher describes the dashboard, page, or assignment they need in a sentence and gets a working web page with its own address. It reads your data, only the parts that person is allowed to see, and never sends a record anywhere.
+
+The honest caveat: today Librea is at the stage where a district's technical team pilots it with synthetic data and decides what it needs before real records go in. The gaps are listed plainly further down. There is no sales call to sit through and no contract; you download it.
+
+## If you are starting a microschool, a pod, or a community school
+
+You have twenty kids, four adults, fifteen families, and a growing pile of paper you are supposed to keep in order: attendance, immunization records, emergency cards, consent forms, background checks, drill logs, learning plans, and, depending on your state, an affidavit. The software built for districts costs more than your rent and assumes an IT department. So it lives in a spreadsheet and a drawer.
+
+**Librea Micro** is the same system with your words in it: learners, guides, pods, families. You start from scratch, typing your community in by hand, and invite families and guides with a code. It keeps the records a regulator, an insurer, or a skeptical parent will ask for, and it tells you, every day, exactly what is missing: "Paloma has no immunization record on file. Silas's background check is still pending. No lockdown drill in 90 days." Families can see their own child's file and help close the gaps. Everything stays on your computer and leaves with you if you ever stop using it.
+
+**Librea Alt** does the same for alternative schools: charters, continuation and credit-recovery programs, independent study, therapeutic schools. Advisors instead of homeroom teachers, credits toward graduation as the number that matters, plan review dates that don't slip, and a list every week of the students who need a call.
+
+Requirements vary by state and Librea is a tool, not legal advice. But it makes "more than legit" a checklist you can actually finish.
+
+## What it takes
+
+- A computer that stays on: a laptop in the office, a small server, or a rented machine. No cloud account required.
+- One person who is comfortable following instructions in a terminal, or a coding assistant. Librea is built to be opened in a tool like Claude Code and adapted by conversation: the repository carries its own instructions for the assistant, and the common changes (your vocabulary, your CSV format, your colors, your server) are each a guided task.
+- About an hour to see it running with sample data. Longer to make it yours.
+
+A hosted demo with synthetic data is planned so you can click around before installing anything. Until then, the quick start below takes ten minutes with a technical friend.
+
+## What Librea is not, yet
+
+It is demo-grade. It has been built and tested with synthetic students, not run in a school. Before a real child's record goes in, a school needs the things listed under "Honest status" below: encrypted disks, HTTPS, single sign-on, and a read audit. None of those are exotic; they are the work of a pilot, and they are why the technical section exists.
+
+---
+
+# For the technical reader
+
+Librea is a single Node process with four runtime dependencies, no build step, and no cloud account. Every change is written to a hash-chained ledger on disk; the searchable vectors, the SQLite database, and the app catalogue are projections rebuilt from that ledger. On top sits a vibe-coding layer: describe a tool in a sentence and Librea writes it as a sandboxed page that reads data through a scoped, server-enforced broker.
+
+Editions flavor one codebase per audience: the default `district`, `LIBREA_EDITION=micro`, and `LIBREA_EDITION=alt`. Each has its own vocabulary, onboarding, compliance pack, seed, and starter apps.
 
 ## The sovereignty promise, stated precisely
+
+This is the part to hand your IT person, your board, or your lawyer.
 
 **What lives on disk.** Everything, under `data/` (or `$LIBREA_DATA`):
 
@@ -66,7 +105,7 @@ LIBREA_EDITION=micro node editions/micro/seed.js && LIBREA_EDITION=micro npm sta
 LIBREA_EDITION=alt   node editions/alt/seed.js   && LIBREA_EDITION=alt   npm start
 ```
 
-Each edition carries its own seed, app templates and README under `editions/<id>/`. `npm run seed` always seeds the district demo. See `docs/editions.md`.
+Each edition carries its own seed, starter apps and README under `editions/<id>/`. With `LIBREA_EDITION` set, `npm run seed` runs that edition's seed. See `docs/editions.md`.
 
 > `npm run seed` wipes the ledger, vectors, snapshot, SQLite file and accounts in `$LIBREA_DATA` before writing (pass `--keep` to append). Point `LIBREA_DATA` somewhere disposable if you are only experimenting.
 
@@ -133,7 +172,7 @@ Everything below is true of the code as it stands. None of it is hidden in a foo
 ## Tests and layout
 
 ```bash
-npm test     # node --test tests/ — 110 tests
+npm test     # node --test tests/ — 112 tests
 npm run build  # imports every module, fails any file over 500 lines
 ```
 
@@ -147,7 +186,7 @@ src/compliance/ checks by pack (core/micro/alt), CSV reports, the family to-do l
 public/        the UI: vanilla ES modules, no bundler, no CDN
 editions/      micro, alt
 data/seed/     synthetic district, curriculum by grade, sample vendor CSVs
-docs/          architecture, security, editions, API, adopter CLAUDE.md
+docs/          architecture, security, editions, API
 ```
 
 ## License
