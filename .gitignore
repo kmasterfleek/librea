@@ -42,3 +42,5 @@ data/invites.json
 # local agent-tooling config (ruflo MCP server, agent skills); not part of Librea
 .mcp.json
 .agents/
+.ruflo/
+.ruvector/
