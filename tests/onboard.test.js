@@ -61,6 +61,17 @@ test('from scratch: create org, people, families, invites, join, caseload scope'
   assert.equal((await j('mai', 'GET', `/api/people/${s3.id}`)).status, 404);
   assert.equal((await j('admin', 'GET', '/api/invites')).json.invites[0].usedBy, 'mai');
 
+  // a family account linked to the FAMILY entity (childless at invite time) sees children linked later
+  const inv2 = (await j('admin', 'POST', '/api/invites', { role: 'family', entityIds: [fam.id] })).json.invite;
+  await j('fam2', 'POST', '/api/invites/redeem', { code: inv2.code, username: 'fam2', password: 'librea-family' });
+  await j('fam2', 'POST', '/api/auth/login', { username: 'fam2', password: 'librea-family' });
+  assert.equal((await j('fam2', 'GET', '/api/people?type=student')).json.total, 2);
+  assert.equal((await j('fam2', 'GET', `/api/people/${s1.id}`)).status, 200);
+  // server mints a fact key when the client omits it
+  const minted = (await j('admin', 'POST', '/api/facts/drills', { rows: [{ orgSourcedId: org.id, type: 'fire', date: '2026-09-01' }] })).json;
+  assert.equal(minted.rows, 1);
+  assert.equal((await j('admin', 'POST', '/api/sql/query', { sql: "SELECT count(*) n FROM drills WHERE id IS NOT NULL AND length(id) > 20" })).json.rows[0].n, 1);
+
   // caseload: a staff account flagged caseload sees only students in its sections
   await j('admin', 'POST', '/api/users', { username: 'guide1', password: 'librea-staff', role: 'staff', entityId: guide.id });
   await j('admin', 'PUT', '/api/users/guide1', { caseload: true });

@@ -316,8 +316,9 @@ export class Store {
     const cols = Object.keys(spec.columns);
     const clean = rows.map((r, i) => {
       if (!r || typeof r !== 'object') throw new Error(`row ${i}: not an object`);
-      const key = r[spec.key];
-      if (typeof key !== 'string' || !key.trim() || key.length > 128) throw new Error(`row ${i}: ${spec.key} required`);
+      let key = r[spec.key];
+      if (key == null || key === '') key = r[spec.key] = randomUUID(); // server mints the key when a client omits it
+      if (typeof key !== 'string' || !key.trim() || key.length > 128) throw new Error(`row ${i}: ${spec.key} must be a short string`);
       const out = {};
       for (const c of cols) {
         const v = r[c];

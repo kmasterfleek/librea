@@ -22,25 +22,26 @@ test('projection mirrors entities, fragments, snapshots, and facts; survives reo
   store.addSnapshot('STU-1', '2025-09', { gpa: 0.7, attendance: 0.9 });
   store.upsertFacts('attendance', [{ id: 'a1', studentSourcedId: 'STU-1', date: '2025-09-02', code: 'present' }, { id: 'a2', studentSourcedId: 'STU-1', date: '2025-09-03', code: 'absent' }]);
   assert.throws(() => store.upsertFacts('nope', [{ id: 'x' }]));
-  assert.throws(() => store.upsertFacts('attendance', [{ studentSourcedId: 'STU-1' }]));
+  assert.throws(() => store.upsertFacts('attendance', [{ id: 123, studentSourcedId: 'STU-1' }]));
+  assert.equal(store.upsertFacts('attendance', [{ studentSourcedId: 'STU-1', date: '2025-09-04', code: 'present' }]).rows, 1); // key minted
   const c = sql.counts();
-  assert.equal(c.students, 1); assert.equal(c.staff, 1); assert.equal(c.orgs, 1); assert.equal(c.fragments, 1); assert.equal(c.snapshots, 1); assert.equal(c.attendance, 2);
+  assert.equal(c.students, 1); assert.equal(c.staff, 1); assert.equal(c.orgs, 1); assert.equal(c.fragments, 1); assert.equal(c.snapshots, 1); assert.equal(c.attendance, 3);
   assert.equal(sql.db.prepare('SELECT givenName, grade, gpa, dim_gpa FROM students').get().gpa, 3.1);
   store.deleteFacts('attendance', ['a2']);
-  assert.equal(sql.counts().attendance, 1);
+  assert.equal(sql.counts().attendance, 2);
   sql.close(); store.snapshot();
 
   // reopen: projection seq matches ledger, nothing replays twice
   sql = new SqlProjection(dir).open();
   store = await new Store(dir).attach(sql).open();
   assert.equal(sql.seq, store.ledger.seq);
-  assert.equal(sql.counts().attendance, 1);
+  assert.equal(sql.counts().attendance, 2);
   // delete the sqlite file: projection rebuilds from the ledger on open
   sql.close();
   for (const f of ['librea.sqlite', 'librea.sqlite-wal', 'librea.sqlite-shm']) fs.rmSync(path.join(dir, f), { force: true });
   sql = new SqlProjection(dir).open();
   store = await new Store(dir).attach(sql).open();
-  assert.equal(sql.counts().attendance, 1);
+  assert.equal(sql.counts().attendance, 2);
   assert.equal(sql.counts().students, 1);
   assert.equal(sql.rebuild(store), store.ledger.seq);
   assert.equal(sql.counts().fragments, 1);

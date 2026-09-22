@@ -26,6 +26,12 @@ export function attachUser(auth, store, sql = null) {
     const token = bearer || cookie(ctx.req, SESSION_COOKIE);
     ctx.user = auth.resolve(token);
     ctx.scope = scopeFor(ctx.user);
+    // A family account linked to a family entity (not just to students) sees that family's children.
+    if (ctx.scope.entityIds && ctx.scope.entityIds.length) {
+      const expanded = new Set(ctx.scope.entityIds);
+      for (const id of ctx.scope.entityIds) { const e = store.getEntity(id); if (e?.type === 'family') for (const sid of e.students || []) expanded.add(sid); }
+      ctx.scope = { ...ctx.scope, entityIds: [...expanded] };
+    }
     if (ctx.scope.caseload) ctx.scope = { ...ctx.scope, entityIds: caseloadFor(sql?.db, ctx.user.entityId), caseload: true };
     // A published app narrows the viewer's scope to what the app declared.
     const appSlug = ctx.req.headers['x-librea-app'];
