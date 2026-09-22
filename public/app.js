@@ -1,7 +1,10 @@
 // Librea shell: tiny hash router, API helper, shared state and DOM helpers.
 // Everything here is vanilla and local. No bundler, no CDN, no telemetry.
 
+import { loadEdition, edition, feature, t } from '/js/edition.js';
+
 export const state = { user: null, scope: null, schema: null, ready: false };
+export { edition, feature, t };
 
 // ---------- DOM ----------
 
@@ -80,7 +83,10 @@ export const pct = (v, digits = 0) => (v == null ? '—' : (v * 100).toFixed(dig
 export const num = (v, digits = 2) => (v == null ? '—' : typeof v === 'number' ? String(+v.toFixed(digits)) : String(v));
 export function when(iso) {
   if (!iso) return '';
-  const d = new Date(iso);
+  // A bare YYYY-MM-DD is a calendar date, not an instant: parse it locally so a
+  // form filled in on the 15th does not read back as the 14th.
+  const plain = /^\d{4}-\d{2}-\d{2}$/.test(String(iso));
+  const d = plain ? new Date(`${iso}T00:00:00`) : new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
   return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
 }
@@ -121,15 +127,19 @@ const ROUTES = [
   { path: 'people', load: () => import('/js/people.js'), nav: 'People', roles: ['admin', 'staff'] },
   { path: 'mine', load: () => import('/js/people.js'), fn: 'mine', nav: 'My kids', roles: ['family'] },
   { path: 'person', load: () => import('/js/person.js') },
+  { path: 'family', load: () => import('/js/family.js') },
   { path: 'me', load: () => import('/js/person.js'), fn: 'me', nav: 'Me', roles: ['student'] },
-  { path: 'data', load: () => import('/js/data.js'), nav: 'Data', roles: '*' },
-  { path: 'import', load: () => import('/js/import.js'), nav: 'Import', roles: ['admin'] },
-  { path: 'build', load: () => import('/js/build.js'), nav: 'Build', roles: '*' },
-  { path: 'apps', load: () => import('/js/apps.js'), nav: 'Apps', roles: '*' },
+  { path: 'onboard', load: () => import('/js/onboard.js'), nav: 'Set up', roles: ['admin'], feature: 'onboarding' },
+  { path: 'compliance', load: () => import('/js/compliance.js'), nav: 'Compliance', roles: ['admin', 'staff'], feature: 'compliance' },
+  { path: 'data', load: () => import('/js/data.js'), nav: 'Data', roles: '*', feature: 'sql' },
+  { path: 'import', load: () => import('/js/import.js'), nav: 'Import', roles: ['admin'], feature: 'import' },
+  { path: 'build', load: () => import('/js/build.js'), nav: 'Build', roles: '*', feature: 'vibe' },
+  { path: 'apps', load: () => import('/js/apps.js'), nav: 'Apps', roles: '*', feature: 'vibe' },
   { path: 'accounts', load: () => import('/js/accounts.js'), nav: 'Accounts', roles: ['admin'] },
+  { path: 'join', load: () => import('/js/join.js'), public: true },
 ];
 
-const allowed = (r) => r.nav && (r.roles === '*' || r.roles.includes(state.user?.role));
+const allowed = (r) => r.nav && (r.roles === '*' || r.roles.includes(state.user?.role)) && (!r.feature || feature(r.feature));
 
 export const go = (hash) => { window.location.hash = hash.startsWith('#') ? hash : '#' + hash; };
 
@@ -144,10 +154,15 @@ let token = 0;
 async function route() {
   const mine = ++token;
   const { name, args, query } = parseHash();
-  if (!state.user) { (await import('/js/auth.js')).show(); return; }
   const r = ROUTES.find((x) => x.path === name) || ROUTES[0];
-  if (r.roles && r.roles !== '*' && !r.roles.includes(state.user.role) && r.path !== 'person') {
+  // A join link works before anyone has an account: that is the whole point of it.
+  if (!state.user && !r.public) { (await import('/js/auth.js')).show(); return; }
+  if (state.user && r.roles && r.roles !== '*' && !r.roles.includes(state.user.role) && r.path !== 'person') {
     render(h('div.card', h('h2', 'Not your page'), h('p.muted', `This page is for ${[].concat(r.roles).join(' and ')} accounts.`)));
+    return;
+  }
+  if (r.feature && !feature(r.feature)) {
+    render(h('div.card', h('h2', 'Not part of this edition'), h('p.muted', `${edition().name} does not include this page.`)));
     return;
   }
   markNav(r.path);
@@ -177,7 +192,7 @@ export function chrome() {
   document.getElementById('foot').hidden = !signedIn;
   if (!signedIn) return;
   const nav = clear(document.getElementById('mainnav'));
-  for (const r of ROUTES.filter(allowed)) nav.appendChild(h('a', { href: '#/' + r.path }, r.nav));
+  for (const r of ROUTES.filter(allowed)) nav.appendChild(h('a', { href: '#/' + r.path }, t(r.nav)));
   document.getElementById('whoami').textContent = `${state.user.displayName || state.user.username} · ${state.user.role}`;
 }
 
@@ -193,6 +208,7 @@ export async function refreshUser() {
 }
 
 export async function boot() {
+  await loadEdition();
   await refreshUser();
   await route();
 }

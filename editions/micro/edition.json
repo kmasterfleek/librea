@@ -1,0 +1,50 @@
+{
+  "id": "micro",
+  "name": "Librea Micro",
+  "tagline": "Records worthy of the learning you already do.",
+  "audience": "Microschools, learning pods, homeschool co-ops, forest schools, and parent-run community schools (5-60 learners)",
+  "vocabulary": {
+    "district": "community",
+    "school": "pod",
+    "student": "learner",
+    "family": "family",
+    "staff": "guides",
+    "teacher": "guide",
+    "class": "group",
+    "grade": "age band",
+    "principal": "lead guide"
+  },
+  "roles": ["admin", "staff", "student", "family"],
+  "features": {
+    "import": true,
+    "vibe": true,
+    "sql": true,
+    "compliance": true,
+    "onboarding": true,
+    "timeline": true,
+    "invites": true
+  },
+  "compliance": { "packs": ["core", "micro"], "ratio": 10 },
+  "onboarding": {
+    "mode": "manual-first",
+    "steps": ["community", "learners", "families", "guides", "records", "drills", "share"]
+  },
+  "theme": {
+    "accent": "#a8622f",
+    "accent2": "#6d8f6a",
+    "logoText": "Librea Micro"
+  },
+  "copy": {
+    "homeHeadline": "Your pod, on the record.",
+    "homeSubhead": "Attendance, learning plans, health forms, and the story of every learner — kept on your own machine, in your own words. No district office. No vendor. No export fee.",
+    "onboardingIntro": "You do not need an IT department for this. Start with your community, add your learners and the families they belong to, name your guides, and put your paperwork where you can find it. Forty minutes of typing and you have the record a state, an insurer, or a nervous grandparent can read.",
+    "sovereigntyLineForParents": "Everything about your child lives on a computer your pod owns. Nothing is sent anywhere. You can read the whole record, add to it yourself, and take a full copy with you the day you leave.",
+    "complianceIntro": "\"More than legit\" means you can answer the ordinary questions on the ordinary day: who was here, who is allowed to pick them up, who has had their shots or a signed exemption, who checked the adults, when you last practiced a fire drill, and what each learner is working toward. Requirements vary by state — this is a tool for keeping your own house in order, not legal advice.",
+    "inviteEmailFamily": "You're invited to {pod}.\n\nThis is the record we keep for {learner} — attendance, learning plans, photos of the work, the health and emergency forms on file. It runs on a computer we own, here. Nothing about your family is sent to a company.\n\nGo to {url} and enter the code {code} to make your login. Once you're in you can read everything we hold, correct anything wrong, and add to it: a note about a hard week, a picture of something built at home. Your words go in the record beside ours.\n\n— {inviter}, {pod}",
+    "inviteEmailGuide": "You're invited to {pod} as a guide.\n\nThis is where we keep the pod's record: the daily register, each learner's plan and the goals under it, the paperwork we're required to keep current, and the running story of what everyone is making.\n\nGo to {url} and enter the code {code} to make your login. Two housekeeping things when you're in: check that your background check, CPR, and mandated-reporter dates are on file under your name, and take the attendance register for your first day so it does not start with a gap.\n\n— {inviter}, {pod}",
+    "emptyLearners": "No learners yet. Add the first one — a name and a birthday is enough to start.",
+    "exportLine": "Export gives you the whole ledger, the SQLite file, and every document path. It is yours; there is no version of this that holds it hostage."
+  },
+  "seed": "editions/micro/seed.js",
+  "templates": "editions/micro/apps"
+}

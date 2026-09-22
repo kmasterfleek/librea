@@ -1,0 +1,46 @@
+{
+  "patterns": {
+    "edit:unknown|browser-session": {
+      "state": "edit:unknown",
+      "action": "browser-session",
+      "q_value": 0.53,
+      "visits": 1,
+      "last_update": 1790114464
+    }
+  },
+  "memories": [],
+  "trajectories": [
+    {
+      "id": "traj_1790112521192_qboafesbn",
+      "context": "librea-ui: Verify Librea UI boots",
+      "agent": "browser-session",
+      "file": null,
+      "steps": [
+        {
+          "action": "browser_open {\"url\":\"http://127.0.0.1:4403/\"}",
+          "result": "ok",
+          "reward": 0.5,
+          "time": 1790112538596
+        }
+      ],
+      "startTime": 1790112521192,
+      "endTime": 1790114464585,
+      "quality": 0.8,
+      "success": true
+    }
+  ],
+  "errors": {},
+  "file_sequences": [],
+  "agents": {},
+  "edges": [],
+  "stats": {
+    "total_patterns": 1,
+    "total_memories": 0,
+    "total_trajectories": 0,
+    "total_errors": 0,
+    "session_count": 0,
+    "last_session": 0
+  },
+  "embeddingProvenance": null,
+  "activeTrajectories": {}
+}

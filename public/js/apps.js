@@ -1,17 +1,18 @@
 // Apps: everything anyone in this district has built, on this machine.
 import { api, apiOptional, h, render, state, status, go, when, panelMissing } from '/app.js';
+import { t } from '/js/edition.js';
 
 export async function show() {
   const data = await apiOptional('/api/apps');
   if (!data) {
-    render(h('div', h('h1', 'Apps'), panelMissing('The app gallery is not available yet', 'The vibe module is not installed on this server. Once it is, everything built here will be listed on this page.')));
+    render(h('div', h('h1', t('Apps')), panelMissing(t('The app gallery is not available yet'), t('The vibe module is not installed on this server. Once it is, everything built here will be listed on this page.'))));
     return;
   }
   const apps = data.apps || [];
   render(h('div',
-    h('div.spread', h('h1', 'Apps'), h('button.btn', { onclick: () => go('/build') }, 'Build something')),
-    h('p.lede', 'Tools people here have made for themselves. Each one runs on this server, against this district’s data, under the scope it declared.'),
-    apps.length ? h('div.grid.two', apps.map(card)) : h('p.empty', 'Nothing built yet. The first one usually takes a sentence.'),
+    h('div.spread', h('h1', t('Apps')), h('button.btn', { onclick: () => go('/build') }, t('Build something'))),
+    h('p.lede', t('Tools people here have made for themselves. Each one runs on this server, against this district’s data, under the scope it declared.')),
+    apps.length ? h('div.grid.two', apps.map(card)) : h('p.empty', t('Nothing built yet. The first one usually takes a sentence.')),
   ));
 }
 

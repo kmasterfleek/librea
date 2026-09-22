@@ -1,6 +1,7 @@
 // The sovereignty panel: where the data lives, whether the ledger still checks
 // out, what leaves the building, and how to get everything back out.
 import { api, apiOptional, h, state, status } from '/app.js';
+import { t, say } from '/js/edition.js';
 
 const EXPORTS = [
   ['/api/export/students.csv', 'Students (CSV)', 'Identity, metrics and the 15 computed signals, one row per student.'],
@@ -11,8 +12,10 @@ const EXPORTS = [
 
 export async function panel() {
   const box = h('div.card.stack',
-    h('h2', { style: 'margin-top:0' }, 'Sovereignty'),
-    h('p.lede', 'Three questions worth being able to answer about any system that holds children’s records.'),
+    h('h2', { style: 'margin-top:0' }, t('Sovereignty')),
+    h('p.lede', ['student', 'family'].includes(state.user?.role)
+      ? say(['sovereignty_line', 'sovereigntyLine', 'sovereigntyLineForParents'], 'Three questions worth being able to answer about any system that holds children’s records.')
+      : say(['sovereignty_line', 'sovereigntyLine'], 'Three questions worth being able to answer about any system that holds children’s records.')),
   );
   box.appendChild(h('div.stack',
     whereBlock(),
@@ -46,15 +49,15 @@ function whereBlock() {
 /** Admin sees exactly how many rows are in each table. */
 function countsLine(counts) {
   if (state.user?.role !== 'admin' || !counts) return null;
-  const parts = Object.entries(counts).filter(([, n]) => n > 0).map(([t, n]) => `${t} ${n.toLocaleString()}`);
-  const empty = Object.entries(counts).filter(([, n]) => !n).map(([t]) => t);
+  const parts = Object.entries(counts).filter(([, n]) => n > 0).map(([name, n]) => `${name} ${n.toLocaleString()}`);
+  const empty = Object.entries(counts).filter(([, n]) => !n).map(([name]) => name);
   return h('span', { style: 'display:block;margin-top:4px' },
     h('span', parts.length ? 'Rows: ' + parts.join(' \u00b7 ') + '.' : 'No rows yet.'),
     empty.length ? h('span', { style: 'display:block;color:var(--ink-faint)' }, 'Empty: ' + empty.join(', ') + '.') : null);
 }
 
 function item(title, body, extra) {
-  return h('div', h('h3', { style: 'margin-top:0' }, title), h('p.small.muted', { style: 'margin:0' }, body), extra || null);
+  return h('div', h('h3', { style: 'margin-top:0' }, t(title)), h('p.small.muted', { style: 'margin:0' }, t(body)), extra || null);
 }
 
 function ledgerBlock() {

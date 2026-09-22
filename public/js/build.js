@@ -1,5 +1,6 @@
 // Build: describe the thing you want, watch it get written, then try it.
 import { api, apiOptional, h, clear, render, state, status, panelMissing, go } from '/app.js';
+import { t } from '/js/edition.js';
 
 const CHIPS = {
   admin: ['A board of attendance by school this month', 'Which students have nobody writing about them?', 'A one-page summary I can bring to the board meeting'],
@@ -11,7 +12,7 @@ const CHIPS = {
 export async function show({ query }) {
   const info = await apiOptional('/api/vibe/provider');
   if (!info) {
-    render(h('div', h('h1', 'Build'), panelMissing('Building apps is not available yet', 'The vibe module is not installed on this server. Once it is, you will be able to describe a tool in plain language and have it written here, on this machine.')));
+    render(h('div', h('h1', t('Build')), panelMissing(t('Building apps is not available yet'), t('The vibe module is not installed on this server. Once it is, you will be able to describe a tool in plain language and have it written here, on this machine.'))));
     return;
   }
   const provider = info.provider || info;
@@ -27,17 +28,17 @@ export async function show({ query }) {
   const out = h('div');
   const code = h('pre.stream', { id: 'code', tabindex: '0' });
   const codeBox = h('details', { open: true }, h('summary', 'Code as it is written'), code);
-  const generate = h('button.btn', { onclick: run }, remix?.app ? 'Remix it' : 'Generate');
+  const generate = h('button.btn', { onclick: run }, t(remix?.app ? 'Remix it' : 'Generate'));
   const canPii = ['admin', 'staff'].includes(state.user?.role);
 
   render(h('div',
-    h('h1', remix?.app ? 'Remix ' + (remix.app.title || remix.app.slug) : 'Build something'),
+    h('h1', remix?.app ? t('Remix ') + (remix.app.title || remix.app.slug) : t('Build something')),
     h('p.lede', 'Describe a tool the way you would describe it to a colleague. Librea writes it against your own data and keeps it here.'),
     h('div.card',
-      h('div.field', h('label', { for: 'prompt' }, 'What do you want?'), prompt),
+      h('div.field', h('label', { for: 'prompt' }, t('What do you want?')), prompt),
       h('div.chips', (CHIPS[state.user?.role] || CHIPS.staff).map((c) => h('button', { type: 'button', onclick: () => { prompt.value = c; prompt.focus(); } }, c))),
       h('div.inline-form', { style: 'margin-top:14px' },
-        h('div', h('label', { for: 'title' }, 'Name'), title),
+        h('div', h('label', { for: 'title' }, t('Name')), title),
         canPii ? h('label.check', { style: 'flex:0 1 auto' }, includePii, 'Include names') : null,
         generate),
       h('p.small.muted', { style: 'margin-bottom:0' }, providerLine(provider, whatLeaves)),
@@ -51,7 +52,7 @@ export async function show({ query }) {
     err.textContent = '';
     generate.disabled = true;
     code.textContent = '';
-    clear(out).append(h('div.card', { style: 'margin-top:18px' }, h('h2', { style: 'margin-top:0' }, 'Writing it'), codeBox));
+    clear(out).append(h('div.card', { style: 'margin-top:18px' }, h('h2', { style: 'margin-top:0' }, t('Writing it')), codeBox));
     status('Generating…');
     try {
       const done = await stream({

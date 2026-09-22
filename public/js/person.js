@@ -2,12 +2,13 @@
 // student, their family and their teachers write together.
 import { api, h, clear, render, state, go, status, displayName, gradeLabel, outcomePill, when, questionFor, num } from '/app.js';
 import { radar, domainLegend } from '/js/charts.js';
+import { t, Word } from '/js/edition.js';
 import { composer } from '/js/fragments.js';
 import { recordsSection } from '/js/records.js';
 
 export async function me() {
   const id = state.user?.entityId;
-  if (!id) { render(h('div.card', h('h2', 'No record linked'), h('p.muted', 'This account is not linked to a student record yet. Ask the office to link it.'))); return; }
+  if (!id) { render(h('div.card', h('h2', t('No record linked')), h('p.muted', t('This account is not linked to a student record yet. Ask the office to link it.')))); return; }
   return show({ args: [id], self: true });
 }
 
@@ -26,8 +27,8 @@ export async function show({ args }) {
     similarCard(person),
     recordsSection(person.id),
     h('div', { style: 'margin-top:22px' },
-      h('h2', 'The record, in words'),
-      h('p.lede', 'Fragments are written by teachers, by families, and by students themselves. Nobody owns this page alone.'),
+      h('h2', t('The record, in words')),
+      h('p.lede', t('Fragments are written by teachers, by families, and by students themselves. Nobody owns this page alone.')),
       composer(person.id, () => reload()),
       timeline),
   );
@@ -46,11 +47,11 @@ function header(p, isSelf) {
   const named = state.scope?.pii || isSelf || (p.firstName || p.preferredName);
   return h('div',
     h('div.spread',
-      h('h1', { style: 'margin-bottom:0' }, isSelf ? 'Me' : (named ? name : p.id)),
+      h('h1', { style: 'margin-bottom:0' }, isSelf ? t('Me') : (named ? name : p.id)),
       outcomePill(p.outcome)),
     h('p.lede', [
       isSelf && named ? name : null,
-      p.grade != null ? `Grade ${gradeLabel(p.grade)}` : null,
+      p.grade != null ? `${Word('grade')} ${gradeLabel(p.grade)}` : null,
       p.schoolId || null,
       h('span.mono.small', { style: 'color:var(--ink-faint)' }, p.id),
     ].filter(Boolean).flatMap((x, i) => (i ? [' · ', x] : [x]))),
@@ -59,7 +60,7 @@ function header(p, isSelf) {
 
 function questions(p) {
   const flags = p.flags || [];
-  if (!flags.length) return h('p.notice', { style: 'margin-top:14px' }, 'No pattern flags right now. That is worth noticing too.');
+  if (!flags.length) return h('p.notice', { style: 'margin-top:14px' }, t('No pattern flags right now. That is worth noticing too.'));
   return h('div.stack', { style: 'margin-top:14px' }, flags.map((f) => h('div.question',
     h('span', { 'aria-hidden': 'true' }, '?'),
     h('div', h('p.q', questionFor(f)), h('p.why', f.reason)))));
@@ -68,9 +69,9 @@ function questions(p) {
 function signalCard(p, dims) {
   const present = dims.filter((d) => p.dims?.[d.key] != null).length;
   return h('div.card',
-    h('h2', { style: 'margin-top:0' }, 'Signal shape'),
+    h('h2', { style: 'margin-top:0' }, t('Signal shape')),
     h('p.small.muted', { style: 'margin-top:0' },
-      `${present} of ${dims.length} signals present${p.coverage != null ? ` · coverage ${Math.round(p.coverage * 100)}%` : ''}. Missing signals are drawn at the centre, not guessed.`),
+      t(`${present} of ${dims.length} signals present${p.coverage != null ? ` · coverage ${Math.round(p.coverage * 100)}%` : ''}. Missing signals are drawn at the centre, not guessed.`)),
     dims.length ? radar(p.dims || {}, dims, { size: 330 }) : null,
     domainLegend(),
   );
@@ -81,15 +82,15 @@ function metricsCard(p) {
   const rows = Object.keys(specs).filter((k) => p.metrics?.[k] != null);
   const derived = p.metricsSource === 'derived';
   return h('div.card',
-    h('div.spread', h('h2', { style: 'margin-top:0' }, 'Structured record'),
-      derived ? h('span.chip', { title: 'These numbers were computed from the attendance, incident and service rows below, not typed in by hand.' }, 'computed from records') : null),
+    h('div.spread', h('h2', { style: 'margin-top:0' }, t('Structured record')),
+      derived ? h('span.chip', { title: t('These numbers were computed from the attendance, incident and service rows below, not typed in by hand.') }, t('computed from records')) : null),
     rows.length ? h('div.tablewrap', { style: 'box-shadow:none' }, h('table',
-      h('thead', h('tr', h('th', { scope: 'col' }, 'Measure'), h('th', { scope: 'col' }, 'Value'), h('th', { scope: 'col' }, 'Units'))),
+      h('thead', h('tr', h('th', { scope: 'col' }, t('Measure')), h('th', { scope: 'col' }, t('Value')), h('th', { scope: 'col' }, t('Units')))),
       h('tbody', rows.map((k) => h('tr',
         h('td', labelize(k)),
         h('td', h('strong', num(p.metrics[k]))),
         h('td.small.muted.wrap', specs[k])))),
-    )) : h('p.empty', 'No structured metrics have been imported for this student.'),
+    )) : h('p.empty', t('No structured metrics have been imported for this student.')),
   );
 }
 
@@ -104,8 +105,8 @@ function similarCard(p) {
   }, label);
   const tabs = h('div.tabs', { role: 'tablist' });
   const drawTabs = () => clear(tabs).append(
-    tab('signal', 'Similar signals', 'Nearest students in the 15-dimension signal space'),
-    tab('semantic', 'Similar stories', 'Nearest students by what has been written about them'),
+    tab('signal', t('Similar signals'), t('Nearest students in the 15-dimension signal space')),
+    tab('semantic', t('Similar stories'), t('Nearest students by what has been written about them')),
   );
   drawTabs();
 
@@ -114,9 +115,9 @@ function similarCard(p) {
     try {
       const { similar } = await api(`/api/people/${encodeURIComponent(p.id)}/similar?space=${space}&k=8`);
       const rows = similar.filter((s) => s.person && s.person.id !== p.id);
-      if (!rows.length) { body.replaceChildren(h('p.empty', 'No comparable students yet.')); return; }
+      if (!rows.length) { body.replaceChildren(h('p.empty', t('No comparable students yet.'))); return; }
       body.replaceChildren(h('div.tablewrap', h('table',
-        h('thead', h('tr', h('th', { scope: 'col' }, state.scope?.pii ? 'Name' : 'Student'), h('th', { scope: 'col' }, 'Grade'), h('th', { scope: 'col' }, 'Pattern'), h('th', { scope: 'col' }, 'Closeness'))),
+        h('thead', h('tr', h('th', { scope: 'col' }, state.scope?.pii ? t('Name') : Word('student')), h('th', { scope: 'col' }, Word('grade')), h('th', { scope: 'col' }, t('Pattern')), h('th', { scope: 'col' }, t('Closeness')))),
         h('tbody', rows.map((s) => h('tr.clickable', { onclick: () => go('/person/' + s.person.id) },
           h('td', state.scope?.pii ? displayName(s.person) : s.person.id),
           h('td', gradeLabel(s.person.grade)),
@@ -128,28 +129,28 @@ function similarCard(p) {
   load();
 
   return h('div.card', { style: 'margin-top:18px' },
-    h('h2', { style: 'margin-top:0' }, 'Students who look like this one'),
-    h('p.small.muted', { style: 'margin-top:0' }, 'Similarity is a starting point for a conversation, not a diagnosis.'),
+    h('h2', { style: 'margin-top:0' }, t('Students who look like this one')),
+    h('p.small.muted', { style: 'margin-top:0' }, t('Similarity is a starting point for a conversation, not a diagnosis.')),
     tabs, body);
 }
 
 function renderTimeline(fragments, onChange) {
   const list = [...(fragments || [])].sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
-  if (!list.length) return h('p.empty', 'Nothing written yet. The first fragment is often the most important one.');
+  if (!list.length) return h('p.empty', t('Nothing written yet. The first fragment is often the most important one.'));
   return h('ul.timeline', list.map((f) => h('li.frag',
     h('header',
       h('span.chip', f.kind),
       h('span.chip.vis-' + f.visibility, visLabel(f.visibility)),
       h('span.who', f.author?.name || f.author?.id || 'unknown'),
       h('span', when(f.createdAt)),
-      canRemove(f) ? h('button.linkish.del', { onclick: () => remove(f, onChange) }, 'Remove') : null),
+      canRemove(f) ? h('button.linkish.del', { onclick: () => remove(f, onChange) }, t('Remove')) : null),
     f.kind === 'photo' && f.media?.path ? h('img', { src: f.media.path, alt: f.text || 'Photo', loading: 'lazy' }) : null,
     h('p', f.text),
   )));
 }
 
 const VIS = { private: 'Only them', family: 'Student and family', school: 'Shared with everyone involved', staff: 'Staff only' };
-const visLabel = (v) => VIS[v] || v;
+const visLabel = (v) => t(VIS[v] || v);
 
 function canRemove(f) {
   const u = state.user;

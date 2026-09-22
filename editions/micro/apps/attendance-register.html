@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Attendance register</title>
+<style>
+:root{--bg:#faf6f0;--card:#fff;--ink:#241f1a;--mut:#6f6557;--line:#e8dfd2;--accent:#a8622f;--ok:#6d8f6a;--warn:#b4585f;--radius:14px}
+@media (prefers-color-scheme:dark){:root{--bg:#1b1815;--card:#241f1a;--ink:#f2ece4;--mut:#a99c8c;--line:#3b342b;--accent:#d9915c;--ok:#8fae8c;--warn:#d98189}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding:28px 20px 40px}
+h1{font-size:clamp(23px,4vw,31px);margin:0 0 4px;letter-spacing:-.015em}
+.sub{color:var(--mut);margin:0 0 20px;max-width:64ch}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px}
+.tools{display:flex;gap:12px;flex-wrap:wrap;align-items:end;margin:0 0 18px}
+label{display:block;font-size:12.5px;color:var(--mut);margin-bottom:4px}
+select,button{font:inherit;color:inherit;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:9px 11px}
+button{background:var(--accent);color:#fff;border-color:transparent;cursor:pointer;font-weight:600}
+button:hover{filter:brightness(1.08)}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;font-size:13.5px}
+th,td{border-bottom:1px solid var(--line);padding:5px 6px;text-align:center;white-space:nowrap}
+th.name,td.name{text-align:left;position:sticky;left:0;background:var(--card);min-width:160px;padding-left:2px}
+thead th{color:var(--mut);font-weight:600;font-size:11.5px;text-transform:uppercase;letter-spacing:.04em}
+thead th.wk{color:var(--accent)}
+tbody tr:hover td{background:rgba(168,98,47,.05)}
+tbody tr:hover td.name{background:var(--card)}
+.m{display:inline-block;width:19px;height:19px;line-height:19px;border-radius:5px;font-size:11.5px;font-weight:600}
+.m.p{background:rgba(109,143,106,.20);color:var(--ok)}
+.m.t{background:rgba(168,98,47,.20);color:var(--accent)}
+.m.a{background:rgba(180,88,95,.22);color:var(--warn)}
+.m.e{background:rgba(180,88,95,.10);color:var(--warn)}
+.m.n{color:var(--mut);opacity:.4}
+td.tot{font-variant-numeric:tabular-nums;font-weight:600}
+.key{display:flex;gap:16px;flex-wrap:wrap;margin:16px 0 0;color:var(--mut);font-size:13px}
+.key span{display:flex;gap:6px;align-items:center}
+.empty{color:var(--mut);padding:22px;text-align:center;border:1px dashed var(--line);border-radius:var(--radius)}
+.err{color:#b4585f;padding:12px;border:1px solid #b4585f33;border-radius:10px;background:#b4585f0d}
+@media print{.tools,footer{display:none}body{background:#fff}.card{border:0;padding:0}}
+</style>
+</head>
+<body>
+<main class="wrap">
+<h1>Attendance register</h1>
+<p class="sub">Every learner down the side, every school day across the top, read straight out of the attendance table. This is the page you print when someone official asks.</p>
+<div class="tools">
+  <div><label for="month">Month</label><select id="month"></select></div>
+  <div><button id="print" type="button">Print</button></div>
+</div>
+<section class="card">
+  <div class="scroll" id="grid"><p class="empty">Loading the register.</p></div>
+  <div class="key">
+    <span><i class="m p">P</i> present</span><span><i class="m t">T</i> tardy</span>
+    <span><i class="m a">A</i> absent</span><span><i class="m e">E</i> excused</span>
+    <span><i class="m n">&middot;</i> no record taken</span>
+  </div>
+</section>
+<div id="err" class="err" role="alert" hidden></div>
+</main>
+<script>
+var $ = function (s, r) { return (r || document).querySelector(s); };
+function fail(e) { var b = $('#err'); b.hidden = false; b.textContent = e && e.message ? e.message : String(e); }
+function note(m) { var n = document.createElement('p'); n.className = 'empty'; n.textContent = m; return n; }
+function nameOf(p) { var n = [p.firstName, p.lastName].filter(Boolean).join(' '); return n || p.preferredName || p.id; }
+function q(s) { return "'" + String(s).replace(/'/g, "''") + "'"; }
+var MARK = { present: ['P', 'p'], tardy: ['T', 't'], absent: ['A', 'a'], excused: ['E', 'e'], remote: ['R', 't'] };
+var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+var people = [];
+
+(async function () {
+  try {
+    await librea.ready();
+    var pr = await librea.people({ type: 'student', limit: 500 });
+    people = (pr.people || []).sort(function (a, b) { return nameOf(a) < nameOf(b) ? -1 : 1; });
+    if (!people.length) { $('#grid').replaceChildren(note('No learners in this app’s scope yet.')); return; }
+
+    var m = await librea.sql('SELECT DISTINCT substr(date, 1, 7) AS ym FROM attendance ORDER BY ym DESC LIMIT 24');
+    if (!m.rowCount) { $('#grid').replaceChildren(note('No attendance has been taken yet. Take the register once and this page fills in.')); return; }
+    m.rows.forEach(function (row) {
+      $('#month').appendChild(librea.el('option', { value: row.ym, text: MONTHS[Number(row.ym.slice(5, 7)) - 1] + ' ' + row.ym.slice(0, 4) }));
+    });
+    $('#month').addEventListener('change', function () { render($('#month').value); });
+    $('#print').addEventListener('click', function () { window.print(); });
+    await render(m.rows[0].ym);
+  } catch (e) { fail(e); }
+  librea.footer(document.querySelector('.wrap'));
+})();
+
+async function render(ym) {
+  $('#err').hidden = true;
+  var r = await librea.sql(
+    'SELECT studentSourcedId AS sid, date, code FROM attendance WHERE substr(date, 1, 7) = ' + q(ym) + ' ORDER BY date', { limit: 2000 });
+  var byStudent = {}, dates = {};
+  (r.rows || []).forEach(function (row) {
+    dates[row.date] = 1;
+    (byStudent[row.sid] || (byStudent[row.sid] = {}))[row.date] = row.code;
+  });
+  var days = Object.keys(dates).sort();
+  var grid = $('#grid');
+  grid.replaceChildren();
+  if (!days.length) { grid.appendChild(note('No days recorded in ' + ym + '.')); return; }
+  if (r.truncated) grid.appendChild(note('This month has more rows than one query returns; the grid below is partial.'));
+
+  var head = librea.el('tr', {}, [librea.el('th', { class: 'name', text: 'Learner' })]);
+  days.forEach(function (d) {
+    var dow = new Date(d + 'T12:00:00Z').getUTCDay();
+    head.appendChild(librea.el('th', { class: dow === 1 ? 'wk' : '', title: d, text: String(Number(d.slice(8))) }));
+  });
+  ['P', 'T', 'A/E'].forEach(function (h) { head.appendChild(librea.el('th', { text: h })); });
+
+  var body = librea.el('tbody');
+  var totals = { present: 0, tardy: 0, away: 0, cells: 0 };
+  people.forEach(function (p) {
+    var row = librea.el('tr', {}, [librea.el('td', { class: 'name', text: nameOf(p) })]);
+    var t = { present: 0, tardy: 0, away: 0 };
+    days.forEach(function (d) {
+      var code = (byStudent[p.id] || {})[d];
+      var mk = MARK[code];
+      if (code === 'present' || code === 'remote') t.present++;
+      else if (code === 'tardy') { t.present++; t.tardy++; }
+      else if (code) t.away++;
+      row.appendChild(librea.el('td', { title: code ? d + ': ' + code : d + ': no record' }, [
+        librea.el('i', { class: 'm ' + (mk ? mk[1] : 'n'), text: mk ? mk[0] : '·' })
+      ]));
+    });
+    [t.present, t.tardy, t.away].forEach(function (n) { row.appendChild(librea.el('td', { class: 'tot', text: String(n) })); });
+    totals.present += t.present; totals.tardy += t.tardy; totals.away += t.away; totals.cells += days.length;
+    body.appendChild(row);
+  });
+
+  var foot = librea.el('tr', {}, [librea.el('td', { class: 'name', text: people.length + ' learners · ' + days.length + ' days' })]);
+  foot.appendChild(librea.el('td', { colspan: days.length, class: 'tot', style: { textAlign: 'right', color: 'var(--mut)', fontWeight: '400' },
+    text: totals.cells ? Math.round((totals.present / totals.cells) * 1000) / 10 + '% present across the month' : '' }));
+  [totals.present, totals.tardy, totals.away].forEach(function (n) { foot.appendChild(librea.el('td', { class: 'tot', text: String(n) })); });
+
+  grid.appendChild(librea.el('table', {}, [
+    librea.el('thead', {}, [head]), body, librea.el('tfoot', {}, [foot])
+  ]));
+}
+</script>
+</body>
+</html>

@@ -90,6 +90,10 @@ export function validateEntity(e) {
     }
     out.metrics = normalizeMetrics(out.metrics || {});
   }
+  if (e.type === 'family') {
+    out.students = [...new Set((out.students || []).map(String))];
+    out.members = (out.members || []).map((m) => ({ name: String(m.name || '').slice(0, 120), relation: String(m.relation || '').slice(0, 40), email: m.email ? String(m.email).slice(0, 200) : undefined, phone: m.phone ? String(m.phone).slice(0, 40) : undefined, language: m.language ? String(m.language).slice(0, 40) : undefined }));
+  }
   for (const k of ['firstName', 'lastName', 'preferredName', 'schoolId', 'email']) {
     if (out[k] != null && !isStr(out[k])) throw new Error(`${k} must be a string`);
     if (isStr(out[k])) out[k] = out[k].trim().slice(0, 200);

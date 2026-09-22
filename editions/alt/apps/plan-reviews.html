@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plan review calendar</title>
+<style>
+:root{--bg:#f7f5f1;--card:#fff;--ink:#1f2421;--mut:#68716b;--line:#e2ded5;--accent:#2f5d50;--warm:#b5652f;--bad:#a8443f;--ok:#4b7a5e;--radius:12px}
+@media (prefers-color-scheme:dark){:root{--bg:#161a18;--card:#1e2320;--ink:#eceae4;--mut:#9aa39c;--line:#333a35;--accent:#7fb3a1;--warm:#dd9257;--bad:#d98a85;--ok:#8fc0a3}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:1000px;margin:0 auto;padding:26px 20px 40px}
+h1{font-size:clamp(21px,4vw,28px);margin:0 0 6px;letter-spacing:-.01em}
+h2{font-size:16px;margin:0 0 4px}
+.sub{color:var(--mut);margin:0 0 22px;max-width:64ch}
+.grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(min(200px,100%),1fr))}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px}
+.stat{font-size:28px;font-weight:650;letter-spacing:-.02em;margin:2px 0 0}
+.lab{color:var(--mut);font-size:12.5px;text-transform:uppercase;letter-spacing:.06em}
+canvas{width:100%;height:210px;display:block}
+table{width:100%;border-collapse:collapse;font-size:14.5px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line)}
+th{color:var(--mut);font-weight:600;font-size:12.5px;text-transform:uppercase;letter-spacing:.05em}
+.tools{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 14px;align-items:end}
+label{display:block;font-size:12.5px;color:var(--mut);margin-bottom:4px}
+select{font:inherit;color:inherit;background:var(--card);border:1px solid var(--line);border-radius:9px;padding:8px 10px}
+.pill{display:inline-block;padding:1px 8px;border-radius:99px;font-size:12px;border:1px solid var(--line)}
+.overdue{color:var(--bad);font-weight:600}
+.soon{color:var(--warm);font-weight:600}
+.group{margin-top:18px}
+.group h2 .lab{margin-left:8px;text-transform:none;letter-spacing:0}
+.empty{color:var(--mut);padding:16px;border:1px dashed var(--line);border-radius:var(--radius);text-align:center}
+.err{color:var(--bad);padding:12px;border:1px solid currentColor;border-radius:10px;margin-top:16px}
+.scroll{overflow-x:auto}
+</style>
+</head>
+<body>
+<main class="wrap">
+<h1>Plan review calendar</h1>
+<p class="sub">Every active IEP, 504, behavior support, transition, and credit-recovery plan, ordered by the date it is due for review. Overdue first, because an overdue annual is the thing an authorizer finds and a student feels.</p>
+<section class="grid" id="tiles" aria-live="polite"></section>
+<section class="card" style="margin-top:16px">
+  <h2>Active plans by type</h2>
+  <canvas id="byType" aria-label="Active plans by type"></canvas>
+</section>
+<section class="card" style="margin-top:16px">
+  <div class="tools">
+    <div><label for="t">Plan type</label><select id="t"><option value="">All types</option></select></div>
+    <div><label for="o">Owner</label><select id="o"><option value="">Everyone</option></select></div>
+  </div>
+  <div id="groups"></div>
+</section>
+<div id="err" class="err" role="alert" hidden></div>
+</main>
+<script>
+var $ = function (s) { return document.querySelector(s); };
+function fail(e) { var b = $('#err'); b.hidden = false; b.textContent = e && e.message ? e.message : String(e); }
+function nameOf(r) { var n = [r.first, r.last].filter(Boolean).join(' '); return n || r.student; }
+var ALL = [], TODAY = new Date().toISOString().slice(0, 10);
+
+var SQL =
+  "SELECT p.id AS id, p.type AS type, p.title AS title, p.status AS status, " +
+  "p.reviewDate AS reviewDate, p.goals AS goals, p.note AS note, " +
+  "p.studentSourcedId AS student, s.givenName AS first, s.familyName AS last, s.grade AS grade, " +
+  "st.givenName || ' ' || st.familyName AS owner " +
+  "FROM learning_plans p " +
+  "LEFT JOIN students s ON s.sourcedId = p.studentSourcedId " +
+  "LEFT JOIN staff st ON st.sourcedId = p.owner " +
+  "WHERE p.status = 'active' AND p.reviewDate IS NOT NULL " +
+  "ORDER BY p.reviewDate ASC";
+
+function daysUntil(d) { return Math.round((new Date(d + 'T12:00:00Z') - new Date(TODAY + 'T12:00:00Z')) / 86400000); }
+
+function table(rows) {
+  var body = librea.el('tbody');
+  rows.forEach(function (r) {
+    var d = r.days;
+    body.appendChild(librea.el('tr', null, [
+      librea.el('td', { text: nameOf(r) }),
+      librea.el('td', { text: r.grade == null ? '—' : 'Grade ' + r.grade }),
+      librea.el('td', null, [librea.el('span', { class: 'pill', text: r.type })]),
+      librea.el('td', { text: r.title || '' }),
+      librea.el('td', { class: d < 0 ? 'overdue' : d <= 30 ? 'soon' : '', text: r.reviewDate + (d < 0 ? '  (' + Math.abs(d) + 'd overdue)' : '  (in ' + d + 'd)') }),
+      librea.el('td', { text: r.owner || '—' }),
+    ]));
+  });
+  return librea.el('div', { class: 'scroll' }, [librea.el('table', null, [
+    librea.el('thead', null, [librea.el('tr', null, ['Student', 'Grade', 'Type', 'Plan', 'Review date', 'Owner'].map(function (h) { return librea.el('th', { text: h }); }))]),
+    body,
+  ])]);
+}
+
+function render() {
+  var t = $('#t').value, o = $('#o').value;
+  var rows = ALL.filter(function (r) { return (!t || r.type === t) && (!o || r.owner === o); });
+  var buckets = [
+    { key: 'Overdue', desc: 'past the review date', rows: rows.filter(function (r) { return r.days < 0; }) },
+    { key: 'Due in 30 days', desc: 'schedule these now', rows: rows.filter(function (r) { return r.days >= 0 && r.days <= 30; }) },
+    { key: 'Due in 31 to 60 days', desc: 'get the invitations out', rows: rows.filter(function (r) { return r.days > 30 && r.days <= 60; }) },
+    { key: 'Later', desc: 'on the calendar', rows: rows.filter(function (r) { return r.days > 60; }) },
+  ];
+  var host = $('#groups');
+  host.textContent = '';
+  buckets.forEach(function (b) {
+    var h = librea.el('h2', { text: b.key }, [librea.el('span', { class: 'lab', text: b.rows.length + ' — ' + b.desc })]);
+    var sec = librea.el('div', { class: 'group' }, [h]);
+    sec.appendChild(b.rows.length ? table(b.rows) : librea.el('p', { class: 'empty', text: 'Nothing here. Good.' }));
+    host.appendChild(sec);
+  });
+}
+
+(async function () {
+  try {
+    await librea.ready();
+    var res = await librea.sql(SQL, { limit: 2000 });
+    ALL = res.rows.map(function (r) { r.days = daysUntil(r.reviewDate); return r; });
+
+    var overdue = ALL.filter(function (r) { return r.days < 0; });
+    var soon = ALL.filter(function (r) { return r.days >= 0 && r.days <= 30; });
+    var students = {};
+    ALL.forEach(function (r) { students[r.student] = 1; });
+    [['Active plans', ALL.length],
+     ['Overdue reviews', overdue.length],
+     ['Due within 30 days', soon.length],
+     ['Students with a plan', Object.keys(students).length]
+    ].forEach(function (row) {
+      $('#tiles').appendChild(librea.el('div', { class: 'card' }, [
+        librea.el('div', { class: 'lab', text: row[0] }),
+        librea.el('div', { class: 'stat', text: String(row[1]) }),
+      ]));
+    });
+
+    var types = [], owners = [];
+    ALL.forEach(function (r) {
+      if (r.type && types.indexOf(r.type) < 0) types.push(r.type);
+      if (r.owner && owners.indexOf(r.owner) < 0) owners.push(r.owner);
+    });
+    types.sort(); owners.sort();
+    types.forEach(function (x) { $('#t').appendChild(librea.el('option', { value: x, text: x })); });
+    owners.forEach(function (x) { $('#o').appendChild(librea.el('option', { value: x, text: x })); });
+    librea.chart.bar($('#byType'), types, types.map(function (x) { return ALL.filter(function (r) { return r.type === x; }).length; }), { emptyText: 'No active plans on file yet.' });
+
+    ['#t', '#o'].forEach(function (sel) { $(sel).addEventListener('input', render); });
+    render();
+  } catch (e) { fail(e); }
+  librea.footer(document.querySelector('.wrap'));
+})();
+</script>
+</body>
+</html>

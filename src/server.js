@@ -7,6 +7,8 @@ import { registerCore } from './api/routes-core.js';
 import { registerExport } from './api/routes-export.js';
 import { registerCurriculum } from './api/routes-curriculum.js';
 import { registerSql } from './api/routes-sql.js';
+import { registerOnboard } from './api/routes-onboard.js';
+import { loadEdition } from './core/edition.js';
 import { SqlProjection } from './sql/projection.js';
 import { Store } from './core/store.js';
 import { Auth } from './core/auth.js';
@@ -20,7 +22,7 @@ export async function createApp({ dataDir = process.env.LIBREA_DATA || path.join
   const store = await new Store(dataDir).attach(sql).open();
   const auth = new Auth(dataDir);
   const router = new Router();
-  const withUser = attachUser(auth, store);
+  const withUser = attachUser(auth, store, sql);
 
   // Every route sees ctx.user / ctx.scope before it runs.
   const origHandle = router.handle.bind(router);
@@ -32,7 +34,8 @@ export async function createApp({ dataDir = process.env.LIBREA_DATA || path.join
   registerExport(router, { store });
   registerCurriculum(router, { root: ROOT });
   registerSql(router, { store, sql });
-  for (const mod of await optionalModules()) mod.register?.(router, { store, auth, dataDir, root: ROOT, sql });
+  registerOnboard(router, { store, auth });
+  for (const mod of await optionalModules()) mod.register?.(router, { store, auth, dataDir, root: ROOT, sql, edition: loadEdition() });
   router.static('/', path.join(ROOT, 'public'));
 
   if (warm) getEmbedder().catch((e) => console.error('embedder init failed:', e.message));
@@ -44,7 +47,7 @@ export async function createApp({ dataDir = process.env.LIBREA_DATA || path.join
 /** Feature modules register themselves if present (import, vibe). */
 async function optionalModules() {
   const mods = [];
-  for (const spec of ['./import/routes.js', './vibe/routes.js']) {
+  for (const spec of ['./import/routes.js', './vibe/routes.js', './compliance/routes.js']) {
     try { mods.push(await import(spec)); } catch (e) { if (e.code !== 'ERR_MODULE_NOT_FOUND') throw e; }
   }
   return mods;
@@ -55,7 +58,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   const host = process.env.HOST || '127.0.0.1';
   const app = await createApp();
   const server = await app.router.listen(port, host);
-  console.log(`Librea listening on http://${host}:${port}  data: ${app.dataDir}`);
+  console.log(`${loadEdition().name} (${loadEdition().id} edition) listening on http://${host}:${port}  data: ${app.dataDir}`);
   const stop = () => { app.close(); server.close(() => process.exit(0)); };
   process.on('SIGINT', stop);
   process.on('SIGTERM', stop);

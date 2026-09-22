@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Credit tracker</title>
+<style>
+:root{--bg:#f7f5f1;--card:#fff;--ink:#1f2421;--mut:#68716b;--line:#e2ded5;--accent:#2f5d50;--warm:#b5652f;--bad:#a8443f;--ok:#4b7a5e;--radius:12px}
+@media (prefers-color-scheme:dark){:root{--bg:#161a18;--card:#1e2320;--ink:#eceae4;--mut:#9aa39c;--line:#333a35;--accent:#7fb3a1;--warm:#dd9257;--bad:#d98a85;--ok:#8fc0a3}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:1080px;margin:0 auto;padding:26px 20px 40px}
+h1{font-size:clamp(21px,4vw,28px);margin:0 0 6px;letter-spacing:-.01em}
+h2{font-size:16px;margin:0 0 12px}
+.sub{color:var(--mut);margin:0 0 22px;max-width:64ch}
+.grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(min(210px,100%),1fr))}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px}
+.stat{font-size:28px;font-weight:650;letter-spacing:-.02em;margin:2px 0 0}
+.lab{color:var(--mut);font-size:12.5px;text-transform:uppercase;letter-spacing:.06em}
+canvas{width:100%;height:240px;display:block}
+table{width:100%;border-collapse:collapse;font-size:14.5px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line)}
+th{color:var(--mut);font-weight:600;font-size:12.5px;text-transform:uppercase;letter-spacing:.05em}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+.bar{height:8px;border-radius:99px;background:var(--line);overflow:hidden;min-width:70px}
+.bar i{display:block;height:100%;background:var(--accent)}
+.tools{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 14px;align-items:end}
+label{display:block;font-size:12.5px;color:var(--mut);margin-bottom:4px}
+input,select{font:inherit;color:inherit;background:var(--card);border:1px solid var(--line);border-radius:9px;padding:8px 10px}
+.pill{display:inline-block;padding:1px 8px;border-radius:99px;font-size:12px;border:1px solid var(--line)}
+.behind{color:var(--bad);font-weight:600}
+.onpace{color:var(--ok)}
+.err{color:var(--bad);padding:12px;border:1px solid currentColor;border-radius:10px;margin-top:16px}
+.scroll{overflow-x:auto}
+</style>
+</head>
+<body>
+<main class="wrap">
+<h1>Credit tracker</h1>
+<p class="sub">Credits earned against the 180 a diploma takes, and whether each student is on pace for their grade level. The furthest behind are at the top &mdash; that is the list the credit-recovery lab works from.</p>
+<section class="grid" id="tiles" aria-live="polite"></section>
+<section class="card" style="margin-top:16px">
+  <h2>Average credits earned by grade</h2>
+  <canvas id="byGrade" aria-label="Average credits earned by grade level"></canvas>
+</section>
+<section class="card" style="margin-top:16px">
+  <div class="tools">
+    <div><label for="g">Grade</label><select id="g"><option value="">All</option></select></div>
+    <div><label for="q">Find a student</label><input id="q" type="search" placeholder="name or id"></div>
+    <div><label for="only">Show</label><select id="only"><option value="all">Everyone</option><option value="behind">Behind pace only</option><option value="senior">Seniors only</option></select></div>
+  </div>
+  <div class="scroll"><table>
+    <thead><tr><th>Student</th><th class="num">Grade</th><th class="num">Earned</th><th class="num">Needed</th><th>Progress</th><th class="num">vs. pace</th><th>Status</th></tr></thead>
+    <tbody id="rows"></tbody>
+  </table></div>
+  <p class="lab" id="count"></p>
+</section>
+<div id="err" class="err" role="alert" hidden></div>
+</main>
+<script>
+var TO_GRADUATE = 180;
+var EXPECTED = { 8: 0, 9: 0, 10: 45, 11: 90, 12: 135 };
+var $ = function (s) { return document.querySelector(s); };
+function fail(e) { var b = $('#err'); b.hidden = false; b.textContent = e && e.message ? e.message : String(e); }
+function nameOf(r) { var n = [r.first, r.last].filter(Boolean).join(' '); return n || r.id; }
+var ALL = [];
+
+var SQL =
+  "SELECT s.sourcedId AS id, s.givenName AS first, s.familyName AS last, s.grade AS grade, " +
+  "s.enrollStatus AS status, " +
+  "ROUND(COALESCE(SUM(CASE WHEN li.category = 'credit' THEN r.score END), 0), 1) AS earned " +
+  "FROM students s " +
+  "LEFT JOIN results r ON r.studentSourcedId = s.sourcedId " +
+  "LEFT JOIN line_items li ON li.sourcedId = r.lineItemSourcedId " +
+  "GROUP BY s.sourcedId, s.givenName, s.familyName, s.grade, s.enrollStatus " +
+  "ORDER BY earned ASC";
+
+function render() {
+  var g = $('#g').value, q = $('#q').value.trim().toLowerCase(), only = $('#only').value;
+  var rows = ALL.filter(function (r) {
+    if (g && String(r.grade) !== g) return false;
+    if (only === 'behind' && r.vsPace >= 0) return false;
+    if (only === 'senior' && r.grade !== 12) return false;
+    if (q && (nameOf(r) + ' ' + r.id).toLowerCase().indexOf(q) < 0) return false;
+    return true;
+  });
+  var body = $('#rows');
+  body.textContent = '';
+  rows.slice(0, 400).forEach(function (r) {
+    var pct = Math.min(100, Math.round((r.earned / TO_GRADUATE) * 100));
+    var tr = librea.el('tr', null, [
+      librea.el('td', { text: nameOf(r) }),
+      librea.el('td', { class: 'num', text: String(r.grade == null ? '—' : r.grade) }),
+      librea.el('td', { class: 'num', text: String(r.earned) }),
+      librea.el('td', { class: 'num', text: String(Math.max(0, TO_GRADUATE - r.earned)) }),
+      librea.el('td', null, [librea.el('div', { class: 'bar', title: pct + '% of a diploma' }, [librea.el('i', { style: { width: pct + '%' } })])]),
+      librea.el('td', { class: 'num ' + (r.vsPace < 0 ? 'behind' : 'onpace'), text: (r.vsPace >= 0 ? '+' : '') + r.vsPace }),
+      librea.el('td', null, [librea.el('span', { class: 'pill', text: r.status || 'active' })]),
+    ]);
+    body.appendChild(tr);
+  });
+  $('#count').textContent = rows.length + ' student' + (rows.length === 1 ? '' : 's') + (rows.length > 400 ? ' (showing the first 400)' : '');
+}
+
+(async function () {
+  try {
+    await librea.ready();
+    var res = await librea.sql(SQL, { limit: 2000 });
+    ALL = res.rows.map(function (r) {
+      r.earned = Number(r.earned) || 0;
+      r.vsPace = r.earned - (EXPECTED[r.grade] || 0);
+      return r;
+    });
+
+    var active = ALL.filter(function (r) { return !r.status || r.status === 'active'; });
+    var behind = active.filter(function (r) { return r.vsPace <= -20; });
+    var seniors = active.filter(function (r) { return r.grade === 12; });
+    var nearly = seniors.filter(function (r) { return r.earned >= TO_GRADUATE - 30; });
+    [['Students', active.length],
+     ['20+ credits behind pace', behind.length],
+     ['Seniors within 30 credits', nearly.length + ' of ' + seniors.length],
+     ['Credits earned, all students', Math.round(ALL.reduce(function (a, r) { return a + r.earned; }, 0))]
+    ].forEach(function (row) {
+      $('#tiles').appendChild(librea.el('div', { class: 'card' }, [
+        librea.el('div', { class: 'lab', text: row[0] }),
+        librea.el('div', { class: 'stat', text: String(row[1]) }),
+      ]));
+    });
+
+    var grades = [];
+    ALL.forEach(function (r) { if (r.grade != null && grades.indexOf(r.grade) < 0) grades.push(r.grade); });
+    grades.sort(function (a, b) { return a - b; });
+    grades.forEach(function (gr) { $('#g').appendChild(librea.el('option', { value: String(gr), text: 'Grade ' + gr })); });
+    librea.chart.bar($('#byGrade'), grades.map(function (gr) { return 'Grade ' + gr; }), grades.map(function (gr) {
+      var set = ALL.filter(function (r) { return r.grade === gr; });
+      return set.length ? Math.round(set.reduce(function (a, r) { return a + r.earned; }, 0) / set.length) : 0;
+    }), { color: '#2f5d50', emptyText: 'No credit results yet.' });
+
+    ['#g', '#q', '#only'].forEach(function (sel) { $(sel).addEventListener('input', render); });
+    render();
+  } catch (e) { fail(e); }
+  librea.footer(document.querySelector('.wrap'));
+})();
+</script>
+</body>
+</html>

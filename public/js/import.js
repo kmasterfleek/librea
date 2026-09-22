@@ -1,6 +1,7 @@
 // Import: paste, pick or try a sample CSV, check the mapping Librea guessed,
 // then apply it. Nothing is written until you have looked at it.
 import { api, apiOptional, h, clear, render, status, panelMissing } from '/app.js';
+import { t } from '/js/edition.js';
 
 let csv = '';
 let preview = null;
@@ -12,9 +13,9 @@ export async function show() {
   presets = await apiOptional('/api/import/presets');
   const stage = h('div');
   render(h('div',
-    h('h1', 'Import'),
-    h('p.lede', 'Bring a roster or an export from your old system. Librea guesses the mapping, shows you what it guessed, and never writes anything you have not looked at.'),
-    presets ? sourceCard(stage) : panelMissing('Import is not available yet', 'The import module is not installed on this server. Once it is, this page will read a CSV, show you the mapping and apply it.'),
+    h('h1', t('Import')),
+    h('p.lede', t('Bring a roster or an export from your old system. Librea guesses the mapping, shows you what it guessed, and never writes anything you have not looked at.')),
+    presets ? sourceCard(stage) : panelMissing(t('Import is not available yet'), t('The import module is not installed on this server. Once it is, this page will read a CSV, show you the mapping and apply it.')),
     stage,
   ));
 }

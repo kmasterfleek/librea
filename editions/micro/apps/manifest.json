@@ -1,0 +1,33 @@
+{
+  "edition": "micro",
+  "apps": [
+    {
+      "slug": "weekly-family-update",
+      "file": "weekly-family-update.html",
+      "title": "Weekly family update",
+      "prompt": "A one-page week in the life of one learner for the family who loves them: days here and days missed, anything new written about them this week, and where their learning plan goals stand. Pick a learner at the top; families see only their own.",
+      "scope": { "visibility": ["family", "school"] }
+    },
+    {
+      "slug": "learner-portfolio",
+      "file": "learner-portfolio.html",
+      "title": "Learner portfolio",
+      "prompt": "A portfolio page for one learner: the work and the voices in a timeline, newest first, with who wrote each one, plus a shape-of-the-learner chart from the signal dimensions and where the numbers actually came from.",
+      "scope": { "visibility": ["family", "school"] }
+    },
+    {
+      "slug": "co-op-roster",
+      "file": "co-op-roster.html",
+      "title": "Co-op roster and groups",
+      "prompt": "The roster for a mixed-age pod, organized into groups. Use the real class groups and enrollments if the pod has set any up; otherwise fall back to grouping learners by age band so a new pod sees something useful on day one. Show which guide has which group.",
+      "scope": { "visibility": ["school"] }
+    },
+    {
+      "slug": "attendance-register",
+      "file": "attendance-register.html",
+      "title": "Attendance register",
+      "prompt": "The monthly attendance register: a grid of every learner down the side and every school day across the top, read straight out of the attendance table, with per-learner totals and a month picker. This is the page you print when someone official asks.",
+      "scope": { "visibility": ["school"] }
+    }
+  ]
+}

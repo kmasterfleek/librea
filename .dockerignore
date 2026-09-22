@@ -1,0 +1,34 @@
+# The image is code. The school is the volume.
+# Never let a ledger, a vector store, an account file or a key into a layer.
+data
+!data/seed
+.env
+.env.*
+node_modules
+npm-debug.log*
+
+# Version control and CI
+.git
+.gitignore
+.github
+
+# Agent tooling and local state — not part of Librea
+.claude
+.claude-flow
+.agents
+.swarm
+.mcp.json
+CLAUDE.md
+ruvector.db
+RuVector-main*
+
+# Docs, tests and editor noise: none of it is needed to run the server.
+# docs/docker holds the entrypoint the Dockerfile copies, so it stays.
+docs
+!docs/docker
+tests
+README.md
+AGENTS.md
+.DS_Store
+*.md
+!data/seed/curriculum/*.md

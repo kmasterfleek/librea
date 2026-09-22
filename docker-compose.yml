@@ -1,0 +1,35 @@
+# One service. One folder of data. Nothing else.
+#
+#   cp docs/docker/env.example.txt .env && docker compose up -d
+#
+# ./data on the host is the whole school: back that folder up and you have
+# backed up the installation. See docs/security.md before exposing the port
+# beyond the machine — Librea speaks plain HTTP and expects a TLS-terminating
+# reverse proxy in front of it.
+services:
+  librea:
+    build: .
+    image: librea:local
+    container_name: librea
+    restart: unless-stopped
+    # Loopback only by default. Change to "4321:4321" once a reverse proxy
+    # terminates TLS, or to reach it from another machine on a trusted network.
+    ports:
+      - "127.0.0.1:${PORT:-4321}:4321"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      # Fixed inside the container regardless of what .env says about the host.
+      HOST: "0.0.0.0"
+      PORT: "4321"
+      LIBREA_DATA: "/data"
+      LIBREA_MODELS: "/data/models"
+    volumes:
+      - ./data:/data
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4321/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s

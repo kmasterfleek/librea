@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Co-op roster and groups</title>
+<style>
+:root{--bg:#faf6f0;--card:#fff;--ink:#241f1a;--mut:#6f6557;--line:#e8dfd2;--accent:#a8622f;--ok:#6d8f6a;--radius:14px}
+@media (prefers-color-scheme:dark){:root{--bg:#1b1815;--card:#241f1a;--ink:#f2ece4;--mut:#a99c8c;--line:#3b342b;--accent:#d9915c;--ok:#8fae8c}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1040px;margin:0 auto;padding:28px 20px 40px}
+h1{font-size:clamp(23px,4vw,31px);margin:0 0 4px;letter-spacing:-.015em}
+h2{font-size:16px;margin:0 0 2px}
+.sub{color:var(--mut);margin:0 0 22px;max-width:64ch}
+.grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fill,minmax(min(280px,100%),1fr))}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px}
+.lab{color:var(--mut);font-size:12.5px;text-transform:uppercase;letter-spacing:.06em;margin:0 0 12px}
+ul{list-style:none;margin:12px 0 0;padding:0}
+li{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid var(--line);font-size:15px}
+li:last-child{border-bottom:0}
+li span{color:var(--mut);font-size:13px;white-space:nowrap}
+.pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:12px;background:rgba(168,98,47,.13);color:var(--accent)}
+.src{margin:0 0 20px;padding:11px 14px;border:1px dashed var(--line);border-radius:10px;color:var(--mut);font-size:13.5px}
+.empty{color:var(--mut);padding:18px;text-align:center;border:1px dashed var(--line);border-radius:var(--radius)}
+.err{color:#b4585f;padding:12px;border:1px solid #b4585f33;border-radius:10px;background:#b4585f0d}
+</style>
+</head>
+<body>
+<main class="wrap">
+<h1>Roster and groups</h1>
+<p class="sub">Who is in the pod and who they sit with. If the pod has set up real groups, this reads them. If it has not, it falls back to age bands so day one still shows you something true.</p>
+<p class="src" id="src">Working out how this pod is organized.</p>
+<section class="grid" id="groups"></section>
+<div id="err" class="err" role="alert" hidden></div>
+</main>
+<script>
+var $ = function (s, r) { return (r || document).querySelector(s); };
+function fail(e) { var b = $('#err'); b.hidden = false; b.textContent = e && e.message ? e.message : String(e); }
+function note(m) { var n = document.createElement('p'); n.className = 'empty'; n.textContent = m; return n; }
+function nameOf(p) { var n = [p.firstName, p.lastName].filter(Boolean).join(' '); return n || p.preferredName || p.id; }
+function gradeLabel(g) { return g == null ? 'unplaced' : g === -1 ? 'PK' : g === 0 ? 'K' : 'year ' + g; }
+function band(g) {
+  if (g == null) return 'Unplaced';
+  if (g <= 1) return 'Youngest · ages 5–7';
+  if (g <= 4) return 'Middle · ages 8–10';
+  if (g <= 7) return 'Older · ages 11–13';
+  return 'Eldest · ages 14+';
+}
+
+function card(title, subtitle, rows) {
+  var ul = librea.el('ul');
+  rows.forEach(function (r) { ul.appendChild(librea.el('li', {}, [librea.el('span', { style: { color: 'inherit', fontSize: '15px', whiteSpace: 'normal' }, text: r[0] }), librea.el('span', { text: r[1] })])); });
+  return librea.el('section', { class: 'card' }, [
+    librea.el('h2', { text: title }),
+    librea.el('p', { class: 'lab', text: subtitle }),
+    rows.length ? ul : note('Nobody here yet.')
+  ]);
+}
+
+(async function () {
+  try {
+    await librea.ready();
+    var pr = await librea.people({ type: 'student', limit: 500 });
+    var learners = pr.people || [];
+    if (!learners.length) { $('#groups').appendChild(note('No learners in this app’s scope yet.')); $('#src').textContent = 'Nothing to group.'; return; }
+    var byId = {};
+    learners.forEach(function (p) { byId[p.id] = p; });
+
+    var sr = await librea.people({ type: 'staff', limit: 100 });
+    var guides = {};
+    (sr.people || []).forEach(function (g) { guides[g.id] = nameOf(g) + (g.title ? ' · ' + g.title : ''); });
+
+    // Preferred path: the pod set up real groups.
+    var used = false;
+    try {
+      var q = await librea.sql(
+        'SELECT c.sourcedId AS gid, c.title AS gtitle, c.classType AS gtype, e.userSourcedId AS uid, e.role AS erole ' +
+        'FROM classes c LEFT JOIN enrollments e ON e.classSourcedId = c.sourcedId ORDER BY c.title');
+      if (q.rowCount) {
+        used = true;
+        var groups = {};
+        q.rows.forEach(function (row) {
+          var g = groups[row.gid] || (groups[row.gid] = { title: row.gtitle || row.gid, type: row.gtype || 'group', members: [], leads: [] });
+          if (!row.uid) return;
+          if (row.erole === 'teacher' || row.erole === 'aide') g.leads.push(guides[row.uid] || row.uid);
+          else if (byId[row.uid]) g.members.push(byId[row.uid]);
+        });
+        var keys = Object.keys(groups);
+        $('#src').textContent = 'Read from this pod’s ' + keys.length + ' group' + (keys.length === 1 ? '' : 's') + ' and their enrollments.';
+        keys.forEach(function (k) {
+          var g = groups[k];
+          g.members.sort(function (a, b) { return nameOf(a) < nameOf(b) ? -1 : 1; });
+          $('#groups').appendChild(card(g.title, (g.leads.length ? g.leads.join(', ') : 'no guide assigned') + ' · ' + g.members.length + ' learners',
+            g.members.map(function (p) { return [nameOf(p), gradeLabel(p.grade)]; })));
+        });
+      }
+    } catch (e) { /* no classes table rows yet; fall through */ }
+
+    // Fallback: mixed-age bands straight off the roster.
+    if (!used) {
+      $('#src').textContent = 'This pod has not set up named groups yet, so these are age bands drawn straight from the roster. Make real groups when you want them and this page will switch over on its own.';
+      var bands = {};
+      learners.forEach(function (p) { (bands[band(p.grade)] || (bands[band(p.grade)] = [])).push(p); });
+      var order = ['Youngest · ages 5–7', 'Middle · ages 8–10', 'Older · ages 11–13', 'Eldest · ages 14+', 'Unplaced'];
+      order.filter(function (b) { return bands[b]; }).forEach(function (b) {
+        var rows = bands[b].sort(function (a, b2) { return nameOf(a) < nameOf(b2) ? -1 : 1; });
+        $('#groups').appendChild(card(b.split(' · ')[0], b.split(' · ')[1] + ' · ' + rows.length + ' learners',
+          rows.map(function (p) { return [nameOf(p), gradeLabel(p.grade)]; })));
+      });
+    }
+
+    var gl = Object.keys(guides);
+    if (gl.length) $('#groups').appendChild(card('Guides', gl.length + ' adults on the roster', gl.map(function (id) { return [guides[id].split(' · ')[0], guides[id].split(' · ')[1] || 'guide']; })));
+  } catch (e) { fail(e); }
+  librea.footer(document.querySelector('.wrap'));
+})();
+</script>
+</body>
+</html>

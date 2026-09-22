@@ -4,12 +4,29 @@ import { scopeFor, narrowScope } from '../core/auth.js';
 
 export const SESSION_COOKIE = 'librea_session';
 
-export function attachUser(auth, store) {
+/**
+ * Students on a staff member's caseload: everyone enrolled as a student in a
+ * class where this staff member is enrolled as teacher or aide, plus students
+ * whose learning plan names them as owner. Computed from the SQL projection.
+ */
+export function caseloadFor(db, staffId) {
+  if (!db || !staffId) return [];
+  const rows = db.prepare(`
+    SELECT DISTINCT s.userSourcedId AS id FROM enrollments t
+      JOIN enrollments s ON s.classSourcedId = t.classSourcedId AND s.role = 'student' AND (s.endDate IS NULL OR s.endDate >= date('now'))
+     WHERE t.userSourcedId = ? AND t.role IN ('teacher', 'aide')
+    UNION SELECT studentSourcedId AS id FROM learning_plans WHERE owner = ? AND status = 'active'
+    UNION SELECT sourcedId AS id FROM students WHERE advisorSourcedId = ?`).all(staffId, staffId, staffId);
+  return rows.map((r) => r.id);
+}
+
+export function attachUser(auth, store, sql = null) {
   return (ctx) => {
     const bearer = (ctx.req.headers.authorization || '').replace(/^Bearer\s+/i, '');
     const token = bearer || cookie(ctx.req, SESSION_COOKIE);
     ctx.user = auth.resolve(token);
     ctx.scope = scopeFor(ctx.user);
+    if (ctx.scope.caseload) ctx.scope = { ...ctx.scope, entityIds: caseloadFor(sql?.db, ctx.user.entityId), caseload: true };
     // A published app narrows the viewer's scope to what the app declared.
     const appSlug = ctx.req.headers['x-librea-app'];
     if (appSlug) {

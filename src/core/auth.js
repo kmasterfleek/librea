@@ -34,7 +34,7 @@ export class Auth {
     return this.publicUser(u);
   }
 
-  publicUser(u) { return u ? { id: u.id, username: u.username, role: u.role, entityId: u.entityId, entityIds: u.entityIds || [], displayName: u.displayName, active: u.active !== false } : null; }
+  publicUser(u) { return u ? { id: u.id, username: u.username, role: u.role, entityId: u.entityId, entityIds: u.entityIds || [], displayName: u.displayName, active: u.active !== false, caseload: !!u.caseload } : null; }
 
   /** Admin edit: role, links, display name, password reset, activate/deactivate. */
   updateUser(username, patch = {}) {
@@ -44,6 +44,7 @@ export class Auth {
     if ('entityId' in patch) u.entityId = patch.entityId || null;
     if (patch.entityIds != null) u.entityIds = [...new Set(patch.entityIds.map(String))];
     if (patch.displayName != null) u.displayName = String(patch.displayName).slice(0, 120);
+    if (patch.caseload != null) u.caseload = !!patch.caseload;
     if (patch.password != null) {
       if (typeof patch.password !== 'string' || patch.password.length < 8) throw new Error('password must be at least 8 characters');
       u.salt = randomBytes(16).toString('hex');
@@ -79,6 +80,36 @@ export class Auth {
   }
 
   listUsers() { return [...this.users.values()].map((u) => this.publicUser(u)); }
+
+  // ---- invites: how a from-scratch school brings people in without an IT department ----
+  get inviteFile() { return this.file.replace(/users\.json$/, 'invites.json'); }
+  _loadInvites() { if (!this.invites) { this.invites = new Map(); if (fs.existsSync(this.inviteFile)) for (const i of JSON.parse(fs.readFileSync(this.inviteFile, 'utf8'))) this.invites.set(i.code, i); } return this.invites; }
+  _saveInvites() { fs.writeFileSync(this.inviteFile, JSON.stringify([...this._loadInvites().values()], null, 1)); }
+
+  /** Create an invite code for a role, optionally pre-linked to entity ids. Expires in `days`. */
+  createInvite({ role, entityId = null, entityIds = [], displayName = '', days = 14, createdBy = 'admin' }) {
+    if (!['staff', 'student', 'family', 'admin'].includes(role)) throw new Error('bad role');
+    const code = randomBytes(6).toString('base64url').replace(/[^A-Za-z0-9]/g, 'x').slice(0, 8).toUpperCase();
+    const inv = { code, role, entityId, entityIds, displayName, createdBy, createdAt: new Date().toISOString(), expiresAt: new Date(Date.now() + days * 86400000).toISOString(), usedBy: null };
+    this._loadInvites().set(code, inv);
+    this._saveInvites();
+    return inv;
+  }
+
+  listInvites() { return [...this._loadInvites().values()].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)); }
+  revokeInvite(code) { const ok = this._loadInvites().delete(String(code).toUpperCase()); this._saveInvites(); return ok; }
+
+  /** Redeem an invite: creates the account with the invite's role and links. */
+  redeemInvite(code, { username, password, displayName }) {
+    const inv = this._loadInvites().get(String(code || '').trim().toUpperCase());
+    if (!inv) throw new Error('invalid invite code');
+    if (inv.usedBy) throw new Error('invite already used');
+    if (inv.expiresAt < new Date().toISOString()) throw new Error('invite expired');
+    const user = this.createUser({ username, password, role: inv.role, entityId: inv.entityId, entityIds: inv.entityIds, displayName: displayName || inv.displayName });
+    inv.usedBy = user.username; inv.usedAt = new Date().toISOString();
+    this._saveInvites();
+    return user;
+  }
 }
 
 /**
@@ -93,7 +124,7 @@ export function scopeFor(user) {
   const vis = ROLE_VISIBILITY[user.role] || [];
   switch (user.role) {
     case 'admin': return { role: 'admin', visibility: vis, entityIds: null, pii: true, aggregates: true };
-    case 'staff': return { role: 'staff', visibility: vis, entityIds: null, pii: true, aggregates: true };
+    case 'staff': return { role: 'staff', visibility: vis, entityIds: null, pii: true, aggregates: true, caseload: !!user.caseload };
     case 'family': return { role: 'family', visibility: vis, entityIds: [...(user.entityIds || []), ...(user.entityId ? [user.entityId] : [])], pii: false, aggregates: true };
     case 'student': return { role: 'student', visibility: vis, entityIds: user.entityId ? [user.entityId] : [], pii: false, aggregates: true };
     default: return { role: user.role, visibility: [], entityIds: [], pii: false, aggregates: false };

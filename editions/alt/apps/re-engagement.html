@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Re-engagement list</title>
+<style>
+:root{--bg:#f7f5f1;--card:#fff;--ink:#1f2421;--mut:#68716b;--line:#e2ded5;--accent:#2f5d50;--warm:#b5652f;--bad:#a8443f;--ok:#4b7a5e;--radius:12px}
+@media (prefers-color-scheme:dark){:root{--bg:#161a18;--card:#1e2320;--ink:#eceae4;--mut:#9aa39c;--line:#333a35;--accent:#7fb3a1;--warm:#dd9257;--bad:#d98a85;--ok:#8fc0a3}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:26px 20px 40px}
+h1{font-size:clamp(21px,4vw,28px);margin:0 0 6px;letter-spacing:-.01em}
+h2{font-size:16px;margin:0 0 12px}
+.sub{color:var(--mut);margin:0 0 22px;max-width:64ch}
+.grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(min(200px,100%),1fr))}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px}
+.stat{font-size:28px;font-weight:650;letter-spacing:-.02em;margin:2px 0 0}
+.lab{color:var(--mut);font-size:12.5px;text-transform:uppercase;letter-spacing:.06em}
+.person{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--bad);border-radius:var(--radius);padding:14px 16px;margin:0 0 12px}
+.person.mild{border-left-color:var(--warm)}
+.who{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.who strong{font-size:17px}
+.miss{font-variant-numeric:tabular-nums;font-weight:650;color:var(--bad)}
+.person.mild .miss{color:var(--warm)}
+.meta{color:var(--mut);font-size:13.5px;margin:2px 0 0}
+.contact{margin:10px 0 0;padding:8px 0 8px 12px;border-left:3px solid var(--line);font-size:14.5px}
+.contact .lab{display:block;margin-bottom:2px}
+.none{color:var(--mut);font-style:italic}
+.tools{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 14px;align-items:end}
+label{display:block;font-size:12.5px;color:var(--mut);margin-bottom:4px}
+select{font:inherit;color:inherit;background:var(--card);border:1px solid var(--line);border-radius:9px;padding:8px 10px}
+.empty{color:var(--mut);padding:20px;border:1px dashed var(--line);border-radius:var(--radius);text-align:center}
+.err{color:var(--bad);padding:12px;border:1px solid currentColor;border-radius:10px;margin-top:16px}
+</style>
+</head>
+<body>
+<main class="wrap">
+<h1>Re-engagement list</h1>
+<p class="sub">Students who missed three or more of the last ten school days, with the last time anyone reached out. This is a call list, not a compliance report &mdash; the point is that nobody drifts away while the paperwork is up to date.</p>
+<section class="grid" id="tiles" aria-live="polite"></section>
+<section style="margin-top:20px">
+  <div class="tools">
+    <div><label for="g">Grade</label><select id="g"><option value="">All grades</option></select></div>
+    <div><label for="c">Contact</label><select id="c"><option value="">Everyone on the list</option><option value="none">No contact logged</option><option value="yes">Contact logged</option></select></div>
+  </div>
+  <div id="list"></div>
+</section>
+<div id="err" class="err" role="alert" hidden></div>
+</main>
+<script>
+var $ = function (s) { return document.querySelector(s); };
+function fail(e) { var b = $('#err'); b.hidden = false; b.textContent = e && e.message ? e.message : String(e); }
+function nameOf(r) { var n = [r.first, r.last].filter(Boolean).join(' '); return n || r.id; }
+var ALL = [], WINDOW = 0;
+
+var SQL =
+  "WITH recent AS (SELECT DISTINCT date FROM attendance ORDER BY date DESC LIMIT 10), " +
+  "tally AS (SELECT studentSourcedId AS sid, COUNT(*) AS days, " +
+  "SUM(CASE WHEN code IN ('absent','excused') THEN 1 ELSE 0 END) AS missed " +
+  "FROM attendance WHERE date IN (SELECT date FROM recent) GROUP BY studentSourcedId) " +
+  "SELECT t.sid AS id, s.givenName AS first, s.familyName AS last, s.grade AS grade, " +
+  "s.enrollStatus AS status, t.missed AS missed, t.days AS days, " +
+  "(SELECT f.text FROM fragments f WHERE f.entityId = t.sid AND f.kind = 'record' ORDER BY f.createdAt DESC LIMIT 1) AS lastContact, " +
+  "adv.givenName || ' ' || adv.familyName AS advisor " +
+  "FROM tally t JOIN students s ON s.sourcedId = t.sid " +
+  "LEFT JOIN staff adv ON adv.sourcedId = s.advisorSourcedId " +
+  "WHERE t.missed >= 3 ORDER BY t.missed DESC, t.days ASC";
+
+function render() {
+  var g = $('#g').value, c = $('#c').value;
+  var rows = ALL.filter(function (r) {
+    if (g && String(r.grade) !== g) return false;
+    if (c === 'none' && r.lastContact) return false;
+    if (c === 'yes' && !r.lastContact) return false;
+    return true;
+  });
+  var host = $('#list');
+  host.textContent = '';
+  if (!rows.length) { host.appendChild(librea.el('p', { class: 'empty', text: 'Nobody matches. Every student here made it to school.' })); return; }
+  rows.forEach(function (r) {
+    var card = librea.el('div', { class: 'person' + (r.missed <= 4 ? ' mild' : '') }, [
+      librea.el('div', { class: 'who' }, [
+        librea.el('strong', { text: nameOf(r) }),
+        librea.el('span', { class: 'miss', text: r.missed + ' of the last ' + r.days + ' days missed' }),
+      ]),
+      librea.el('p', { class: 'meta', text: (r.grade == null ? 'Grade unknown' : 'Grade ' + r.grade) + ' · ' + (r.status || 'active') + ' · advisor: ' + (r.advisor || 'unassigned') }),
+      librea.el('div', { class: 'contact' }, [
+        librea.el('span', { class: 'lab', text: 'Last contact' }),
+        r.lastContact
+          ? librea.el('span', { text: r.lastContact })
+          : librea.el('span', { class: 'none', text: 'Nothing logged. Start here.' }),
+      ]),
+    ]);
+    host.appendChild(card);
+  });
+}
+
+(async function () {
+  try {
+    await librea.ready();
+    var res = await librea.sql(SQL, { limit: 500 });
+    ALL = res.rows.map(function (r) { r.missed = Number(r.missed) || 0; r.days = Number(r.days) || 0; return r; });
+    WINDOW = ALL.length ? ALL[0].days : 10;
+
+    var noContact = ALL.filter(function (r) { return !r.lastContact; });
+    var severe = ALL.filter(function (r) { return r.missed >= 5; });
+    [['On the list', ALL.length],
+     ['Missed 5 or more', severe.length],
+     ['No contact logged', noContact.length],
+     ['Window', 'last ' + WINDOW + ' school days']
+    ].forEach(function (row) {
+      $('#tiles').appendChild(librea.el('div', { class: 'card' }, [
+        librea.el('div', { class: 'lab', text: row[0] }),
+        librea.el('div', { class: 'stat', text: String(row[1]) }),
+      ]));
+    });
+
+    var grades = [];
+    ALL.forEach(function (r) { if (r.grade != null && grades.indexOf(r.grade) < 0) grades.push(r.grade); });
+    grades.sort(function (a, b) { return a - b; });
+    grades.forEach(function (gr) { $('#g').appendChild(librea.el('option', { value: String(gr), text: 'Grade ' + gr })); });
+
+    ['#g', '#c'].forEach(function (sel) { $(sel).addEventListener('input', render); });
+    render();
+  } catch (e) { fail(e); }
+  librea.footer(document.querySelector('.wrap'));
+})();
+</script>
+</body>
+</html>

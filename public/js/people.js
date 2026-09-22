@@ -1,5 +1,6 @@
 // People: filters, semantic search over fragments, and a paged table.
 import { api, qs, h, clear, render, state, go, displayName, gradeLabel, outcomePill, when } from '/app.js';
+import { t, Word } from '/js/edition.js';
 
 const PAGE = 25;
 const OUTCOMES = ['on-track', 'watch', 'high-risk', 'resilient', 'hidden-risk'];
@@ -16,19 +17,52 @@ const EXAMPLES = ['kids who love building things', 'families who moved recently'
 export async function mine() {
   const { people } = await api('/api/people?limit=100');
   render(h('div',
-    h('h1', 'My kids'),
-    h('p.lede', 'Everything the school records, and everything you and they have added.'),
+    h('h1', t('My kids')),
+    h('p.lede', t('Everything the school records, and everything you and they have added.')),
     people.length ? h('div.grid.two', people.map((p) => h('div.card',
       h('div.spread', h('h2', { style: 'margin:0' }, displayName(p)), outcomePill(p.outcome)),
-      h('p.small.muted', `Grade ${gradeLabel(p.grade)}${p.schoolId ? ' · ' + p.schoolId : ''}`),
-      h('button.btn.ghost.small', { onclick: () => go('/person/' + p.id) }, 'Open record'),
-    ))) : h('p.empty', 'No records are linked to this account yet.'),
+      h('p.small.muted', t(`Grade ${gradeLabel(p.grade)}`) + (p.schoolId ? ' · ' + p.schoolId : '')),
+      h('button.btn.ghost.small', { onclick: () => go('/person/' + p.id) }, t('Open record')),
+    ))) : h('p.empty', t('No records are linked to this account yet.')),
   ));
 }
 
 export async function show({ query }) {
+  const tab = query?.tab === 'families' ? 'families' : 'students';
+  const tabs = h('div.tabs', { role: 'tablist' },
+    h('button', { role: 'tab', 'aria-selected': String(tab === 'students'), onclick: () => go('/people') }, Word('student', true)),
+    h('button', { role: 'tab', 'aria-selected': String(tab === 'families'), onclick: () => go('/people?tab=families') }, t('Families')),
+  );
+  if (tab === 'families') { await showFamilies(tabs); return; }
+  await showStudents({ query }, tabs);
+}
+
+async function showFamilies(tabs) {
+  const { people } = await api('/api/people?type=family&limit=200');
+  render(h('div',
+    h('h1', t('People')),
+    tabs,
+    h('p.lede', t('Every family on the record, and how many students each one speaks for.')),
+    people.length
+      ? h('div.tablewrap', h('table',
+        h('thead', h('tr', [t('Family'), t('Grown-ups'), Word('student', true), t('Id')].map((x) => h('th', { scope: 'col' }, x)))),
+        h('tbody', people.map((f) => h('tr.clickable', {
+          tabindex: '0',
+          onclick: () => go('/family/' + f.id),
+          onkeydown: (e) => { if (e.key === 'Enter') go('/family/' + f.id); },
+        },
+          h('td', h('strong', f.name || f.id)),
+          h('td.wrap', (f.members || []).map((m) => m.name).filter(Boolean).join(', ') || '—'),
+          h('td', String((f.students || []).length)),
+          h('td', h('span.mono.small', f.id)))))))
+      : h('p.empty', t('No families yet. Create one in the setup wizard.')),
+  ));
+}
+
+async function showStudents({ query }, tabs) {
   const stats = await api('/api/stats').catch(() => ({ schools: [] }));
   const f = { schoolId: '', grade: '', outcome: '', flag: '', q: '', ...query };
+  delete f.tab;
   let offset = 0;
 
   const results = h('div');
@@ -39,8 +73,9 @@ export async function show({ query }) {
   const controls = filterBar(stats, f, () => { offset = 0; loadTable(); search.rerun(); });
 
   render(h('div',
-    h('h1', 'People'),
-    h('p.lede', 'Filter by the structured record, or ask in plain language and search what people have actually written.'),
+    h('h1', t('People')),
+    tabs,
+    h('p.lede', t('Filter by the structured record, or ask in plain language and search what people have actually written.')),
     search.node,
     searchResults,
     controls,
@@ -54,17 +89,17 @@ export async function show({ query }) {
     clear(results).appendChild(h('p.empty', 'Loading…'));
     const data = await api('/api/people' + qs({ type: 'student', ...f, limit: PAGE, offset }));
     countLine.textContent = data.total
-      ? `${data.total} student${data.total === 1 ? '' : 's'} · showing ${offset + 1}–${Math.min(offset + PAGE, data.total)}`
-      : 'No students match these filters.';
+      ? t(`${data.total} student${data.total === 1 ? '' : 's'}`) + ` · ${t('showing')} ${offset + 1}–${Math.min(offset + PAGE, data.total)}`
+      : t('No students match these filters.');
     clear(results);
-    if (!data.people.length) { results.appendChild(h('p.empty', 'Nothing here. Try widening the filters.')); return; }
+    if (!data.people.length) { results.appendChild(h('p.empty', t('Nothing here. Try widening the filters.'))); return; }
     results.appendChild(table(data.people));
     results.appendChild(pager(data.total));
   }
 
   function pager(total) {
-    const back = h('button.btn.ghost.small', { disabled: offset === 0, onclick: () => { offset = Math.max(0, offset - PAGE); loadTable(); } }, 'Previous');
-    const next = h('button.btn.ghost.small', { disabled: offset + PAGE >= total, onclick: () => { offset += PAGE; loadTable(); } }, 'Next');
+    const back = h('button.btn.ghost.small', { disabled: offset === 0, onclick: () => { offset = Math.max(0, offset - PAGE); loadTable(); } }, t('Previous'));
+    const next = h('button.btn.ghost.small', { disabled: offset + PAGE >= total, onclick: () => { offset += PAGE; loadTable(); } }, t('Next'));
     return h('div.row', { style: 'margin-top:12px;justify-content:flex-end' }, back, next);
   }
 }
@@ -81,14 +116,14 @@ function filterBar(stats, f, onChange) {
   const grades = [...Array(15).keys()].map((i) => i - 1);
   return h('div.card', { style: 'margin:18px 0' },
     h('div.inline-form',
-      labelled('Name or id', h('input', { type: 'search', id: 'f-q', value: f.q, placeholder: 'Search the roster', oninput: debounce(bind('q'), 300) })),
-      labelled('School', select('f-school', [['', 'Any school'], ...schools.map((s) => [s.id, s.name || s.id])], f.schoolId, bind('schoolId'))),
-      labelled('Grade', select('f-grade', [['', 'Any grade'], ...grades.map((g) => [String(g), gradeLabel(g)])], f.grade, bind('grade'))),
-      labelled('Pattern', select('f-outcome', [['', 'Any pattern'], ...OUTCOMES.map((o) => [o, o.replace('-', ' ')])], f.outcome, bind('outcome'))),
-      labelled('Flag', select('f-flag', [['', 'Any flag'], ...FLAGS], f.flag, bind('flag'))),
+      labelled(t('Name or id'), h('input', { type: 'search', id: 'f-q', value: f.q, placeholder: t('Search the roster'), oninput: debounce(bind('q'), 300) })),
+      labelled(Word('school'), select('f-school', [['', t('Any school')], ...schools.map((s) => [s.id, s.name || s.id])], f.schoolId, bind('schoolId'))),
+      labelled(Word('grade'), select('f-grade', [['', t('Any grade')], ...grades.map((g) => [String(g), gradeLabel(g)])], f.grade, bind('grade'))),
+      labelled(t('Pattern'), select('f-outcome', [['', t('Any pattern')], ...OUTCOMES.map((o) => [o, o.replace('-', ' ')])], f.outcome, bind('outcome'))),
+      labelled(t('Flag'), select('f-flag', [['', t('Any flag')], ...FLAGS], f.flag, bind('flag'))),
       h('button.btn.ghost.small', {
         onclick: () => { for (const k of Object.keys(f)) f[k] = ''; for (const el of document.querySelectorAll('.inline-form select, .inline-form input')) el.value = ''; onChange(); },
-      }, 'Clear'),
+      }, t('Clear')),
     ));
 }
 
@@ -101,7 +136,7 @@ function select(id, options, value, onchange) {
 }
 
 function searchBox(filters, onResults) {
-  const input = h('input', { type: 'search', id: 'sem-q', placeholder: 'kids who love building things', 'aria-label': 'Search what people have written' });
+  const input = h('input', { type: 'search', id: 'sem-q', placeholder: t('kids who love building things'), 'aria-label': 'Search what people have written' });
   const out = h('div');
   const run = async (q) => {
     input.value = q;
@@ -118,8 +153,8 @@ function searchBox(filters, onResults) {
     } catch (e) { out.replaceChildren(h('p.err', e.message)); }
   };
   const form = h('form', { onsubmit: (e) => { e.preventDefault(); run(input.value); } },
-    h('div.inline-form', h('div', { style: 'flex:3 1 260px' }, h('label', { for: 'sem-q' }, 'Ask in plain language'), input), h('button.btn', { type: 'submit' }, 'Search')),
-    h('div.chips', { style: 'margin-top:10px' }, EXAMPLES.map((ex) => h('button', { type: 'button', onclick: () => run(ex) }, ex))),
+    h('div.inline-form', h('div', { style: 'flex:3 1 260px' }, h('label', { for: 'sem-q' }, t('Ask in plain language')), input), h('button.btn', { type: 'submit' }, t('Search'))),
+    h('div.chips', { style: 'margin-top:10px' }, EXAMPLES.map((ex) => h('button', { type: 'button', onclick: () => run(t(ex)) }, t(ex)))),
     out,
   );
   return { node: h('div.card', form), rerun: () => { if (input.value.trim()) run(input.value); } };
@@ -134,8 +169,8 @@ function renderSearch(container, results, q, filters) {
     return;
   }
   container.appendChild(h('div', { style: 'margin-top:16px' },
-    h('h2', `Written about “${q}”`),
-    narrowing ? h('p.small.muted', { style: 'margin-top:-6px' }, 'Narrowed to ' + narrowing.replace(/^in /, '') + '. Clear the filters to search everyone.') : null,
+    h('h2', t('Written about') + ` “${q}”`),
+    narrowing ? h('p.small.muted', { style: 'margin-top:-6px' }, t('Narrowed to ') + narrowing.replace(/^in /, '') + '. Clear the filters to search everyone.') : null,
     h('div.stack', results.map((r) => h('div.card',
       h('div.spread',
         h('button.linkish', { onclick: () => go('/person/' + r.person.id), style: 'text-decoration:none;font-weight:650;font-size:1rem;color:var(--ink)' },
@@ -165,7 +200,7 @@ const snippet = (text) => (text || '').length > 260 ? text.slice(0, 260).trimEnd
 function table(people) {
   const showNames = state.scope?.pii;
   return h('div.tablewrap', h('table',
-    h('thead', h('tr', [showNames ? 'Name' : 'Student', 'Grade', 'School', 'Pattern', 'Questions', 'Coverage'].map((t) => h('th', { scope: 'col' }, t)))),
+    h('thead', h('tr', [showNames ? 'Name' : Word('student'), Word('grade'), Word('school'), 'Pattern', 'Questions', 'Coverage'].map((label) => h('th', { scope: 'col' }, t(label))))),
     h('tbody', people.map((p) => h('tr.clickable', {
       tabindex: '0',
       onclick: () => go('/person/' + p.id),

@@ -34,11 +34,11 @@ export class SqlProjection {
 
   _prepare() {
     const up = (table, cols, key) => this.db.prepare(`INSERT INTO ${table} (${cols.join(', ')}) VALUES (${cols.map(() => '?').join(', ')}) ON CONFLICT(${key}) DO UPDATE SET ${cols.filter((c) => c !== key).map((c) => `${c} = excluded.${c}`).join(', ')}`);
-    this.studentCols = ['sourcedId', 'givenName', 'familyName', 'preferredName', 'grade', 'schoolSourcedId', 'dob', 'gender', 'email', 'enrollStatus', 'externalIds', ...METRIC_COLS, ...DIM_COLS.map((c) => 'dim_' + c), 'outcome', 'risk', 'arc', 'coverage', 'flags', 'updatedAt'];
+    this.studentCols = ['sourcedId', 'givenName', 'familyName', 'preferredName', 'grade', 'schoolSourcedId', 'advisorSourcedId', 'dob', 'gender', 'email', 'enrollStatus', 'externalIds', ...METRIC_COLS, ...DIM_COLS.map((c) => 'dim_' + c), 'outcome', 'risk', 'arc', 'coverage', 'flags', 'updatedAt'];
     this.stmt = {
       student: up('students', this.studentCols, 'sourcedId'),
-      staff: up('staff', ['sourcedId', 'givenName', 'familyName', 'email', 'role', 'schoolSourcedId', 'updatedAt'], 'sourcedId'),
-      org: up('orgs', ['sourcedId', 'name', 'type', 'level', 'identifier', 'parentSourcedId'], 'sourcedId'),
+      staff: up('staff', ['sourcedId', 'givenName', 'familyName', 'email', 'role', 'title', 'schoolSourcedId', 'updatedAt'], 'sourcedId'),
+      org: up('orgs', ['sourcedId', 'name', 'type', 'level', 'identifier', 'parentSourcedId', 'address', 'city', 'state', 'postalCode', 'phone', 'email'], 'sourcedId'),
       fragment: up('fragments', ['id', 'entityId', 'kind', 'visibility', 'authorId', 'authorRole', 'source', 'createdAt', 'mediaPath', 'text'], 'id'),
       snapshot: up('snapshots', ['entityId', 'at', ...DIM_COLS], 'entityId, at'),
       delEntity: ['students', 'staff', 'orgs'].map((t) => this.db.prepare(`DELETE FROM ${t} WHERE sourcedId = ?`)),
@@ -76,12 +76,12 @@ export class SqlProjection {
     const j = (v) => (v == null ? null : JSON.stringify(v));
     if (e.type === 'student') {
       const m = e.metrics || {}, dims = e.dims || {};
-      this.stmt.student.run(e.id, e.firstName ?? null, e.lastName ?? null, e.preferredName ?? null, e.grade ?? null, e.schoolId ?? null, e.dob ?? null, e.gender ?? null, e.email ?? null, e.enrollStatus ?? null, j(e.externalIds),
+      this.stmt.student.run(e.id, e.firstName ?? null, e.lastName ?? null, e.preferredName ?? null, e.grade ?? null, e.schoolId ?? null, e.advisorId ?? null, e.dob ?? null, e.gender ?? null, e.email ?? null, e.enrollStatus ?? null, j(e.externalIds),
         ...METRIC_COLS.map((c) => m[c] ?? null), ...DIM_COLS.map((c) => dims[c] ?? null), e.outcome ?? null, e.risk ?? null, e.arc ?? null, e.coverage ?? null, j((e.flags || []).map((f) => f.key)), e.updatedAt ?? null);
     } else if (e.type === 'staff') {
-      this.stmt.staff.run(e.id, e.firstName ?? null, e.lastName ?? null, e.email ?? null, e.role ?? null, e.schoolId ?? null, e.updatedAt ?? null);
+      this.stmt.staff.run(e.id, e.firstName ?? null, e.lastName ?? null, e.email ?? null, e.role ?? null, e.title ?? null, e.schoolId ?? null, e.updatedAt ?? null);
     } else if (e.type === 'school') {
-      this.stmt.org.run(e.id, e.name ?? null, 'school', e.level ?? null, e.externalIds ? JSON.stringify(e.externalIds) : null, e.parentId ?? null);
+      this.stmt.org.run(e.id, e.name ?? null, 'school', e.level ?? null, e.externalIds ? JSON.stringify(e.externalIds) : null, e.parentId ?? null, e.address ?? null, e.city ?? null, e.state ?? null, e.postalCode ?? null, e.phone ?? null, e.email ?? null);
     }
   }
 

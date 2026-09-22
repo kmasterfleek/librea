@@ -1,6 +1,7 @@
 // The add-fragment composer. What you may write, and who may read it, depends
 // on who you are — the same rules the server enforces, said out loud.
 import { api, h, state, status } from '/app.js';
+import { t } from '/js/edition.js';
 
 const KIND_COPY = {
   self: ['In my own words', 'How something went, what you are working on, what you want people to know.'],
@@ -32,28 +33,28 @@ export function composer(entityId, onAdded) {
   const rules = BY_ROLE[state.user?.role];
   if (!rules) return h('p.notice', 'This account cannot add to the record.');
 
-  const kindSel = h('select', { id: 'fr-kind', onchange: () => sync() }, rules.kinds.map((k) => h('option', { value: k }, KIND_COPY[k]?.[0] || k)));
+  const kindSel = h('select', { id: 'fr-kind', onchange: () => sync() }, rules.kinds.map((k) => h('option', { value: k }, t(KIND_COPY[k]?.[0] || k))));
   kindSel.value = rules.kinds[0];
-  const visSel = h('select', { id: 'fr-vis' }, rules.visibility.map((v) => h('option', { value: v }, VIS_COPY[v] || v)));
+  const visSel = h('select', { id: 'fr-vis' }, rules.visibility.map((v) => h('option', { value: v }, t(VIS_COPY[v] || v))));
   visSel.value = rules.default;
   const text = h('textarea', { id: 'fr-text', placeholder: 'Write it the way you would say it.' });
   const hint = h('p.small.muted', { style: 'margin:4px 0 0' });
   const fileRow = h('div.field', { hidden: true },
-    h('label', { for: 'fr-file' }, 'Photo'),
+    h('label', { for: 'fr-file' }, t('Photo')),
     h('input', { type: 'file', id: 'fr-file', accept: 'image/png,image/jpeg,image/webp', onchange: onPick }));
   const preview = h('div.thumbrow');
   const err = h('p.err', { role: 'alert' });
-  const submit = h('button.btn', { type: 'submit' }, 'Add to the record');
+  const submit = h('button.btn', { type: 'submit' }, t('Add to the record'));
   let picked = null;
 
   const form = h('form', { onsubmit: onSubmit },
     h('div.inline-form',
-      h('div', h('label', { for: 'fr-kind' }, 'What is this?'), kindSel),
-      h('div', h('label', { for: 'fr-vis' }, 'Who can read it?'), visSel)),
+      h('div', h('label', { for: 'fr-kind' }, t('What is this?')), kindSel),
+      h('div', h('label', { for: 'fr-vis' }, t('Who can read it?')), visSel)),
     hint,
     fileRow,
     preview,
-    h('div.field', { style: 'margin-top:12px' }, h('label', { for: 'fr-text' }, 'Words'), text),
+    h('div.field', { style: 'margin-top:12px' }, h('label', { for: 'fr-text' }, t('Words')), text),
     err,
     submit,
   );
@@ -61,7 +62,7 @@ export function composer(entityId, onAdded) {
 
   function sync() {
     const kind = kindSel.value;
-    hint.textContent = KIND_COPY[kind]?.[1] || '';
+    hint.textContent = t(KIND_COPY[kind]?.[1] || '');
     fileRow.hidden = kind !== 'photo';
     text.placeholder = kind === 'photo' ? 'Caption — what is happening here?' : 'Write it the way you would say it.';
     if (kind !== 'photo') { picked = null; preview.replaceChildren(); }

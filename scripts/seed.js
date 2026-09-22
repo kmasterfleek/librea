@@ -9,6 +9,18 @@ import { Auth } from '../src/core/auth.js';
 import { SqlProjection } from '../src/sql/projection.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+
+// `npm run seed` seeds whatever edition is active: an edition whose
+// edition.json names a seed script gets that script instead of the district.
+{
+  const { loadEdition } = await import('../src/core/edition.js');
+  const ed = loadEdition();
+  if (ed.id !== 'district' && typeof ed.seed === 'string' && ed.seed.endsWith('.js')) {
+    const file = path.join(ROOT, ed.seed);
+    if (fs.existsSync(file)) { console.log(`Seeding the ${ed.name} edition via ${ed.seed}`); await import(file); process.exit(0); }
+    console.warn(`edition seed ${ed.seed} not found; seeding the district demo instead`);
+  }
+}
 const dataDir = process.env.LIBREA_DATA || path.join(ROOT, 'data');
 const limit = Number(process.argv.find((a) => a.startsWith('--limit='))?.split('=')[1]) || Infinity;
 const keep = process.argv.includes('--keep');
@@ -21,7 +33,7 @@ const store = await new Store(dataDir).attach(sql).open();
 const auth = new Auth(dataDir);
 
 const schoolId = (name) => 'SCH-' + name.split(' ')[0].toUpperCase();
-for (const s of seed.schools) store.upsertEntity({ id: schoolId(s.name), type: 'school', name: s.name, level: s.type, capacity: s.size }, 'seed');
+seed.schools.forEach((s, k) => store.upsertEntity({ id: schoolId(s.name), type: 'school', name: s.name, level: s.type, capacity: s.size, address: `${100 + k * 250} ${s.name.split(' ')[0]} Ave`, city: 'Riverbend', state: 'CA', postalCode: '9550' + k, phone: '555-020' + k }, 'seed'));
 
 const INTERESTS = ['robotics', 'drawing comics', 'soccer', 'cooking with my grandmother', 'coding games', 'basketball', 'writing stories', 'skateboarding', 'the school garden', 'music production', 'chess', 'fixing bikes', 'theater', 'birdwatching', 'Minecraft redstone', 'dance', 'anime', 'volunteering at the shelter', 'fishing', 'building with cardboard', 'sewing', 'ham radio', 'baking', 'photography', 'track', 'origami', 'taking apart old electronics', 'poetry', 'gardening tomatoes', 'making beats', 'wrestling', 'knitting', 'sign language', 'DJing', 'drones', 'my little brother', 'hip hop', 'astronomy', 'weather', 'card games'];
 const GOALS = ['get better at math this year', 'read a whole chapter book by myself', 'make a friend in my new class', 'build something that works the first time', 'speak up more in class', 'run the mile without stopping', 'learn to solder', 'finish my comic', 'get my grades up so I can play', 'teach my cousin what I learned', 'stop being scared of presentations', 'learn enough Spanish to talk to my grandpa', 'start a club', 'make the robotics team', 'figure out what I want to do after school'];
@@ -124,6 +136,28 @@ if (fs.existsSync(tlFile)) {
   if (inc.length) store.upsertFacts('discipline_incidents', inc, 'seed');
   if (svc.length) store.upsertFacts('services', svc, 'seed');
   console.log(`  facts: ${att.length} attendance rows, ${inc.length} incidents, ${svc.length} services`);
+}
+// Compliance records for the district demo: immunizations, documents, plans,
+// contacts, drills, staff credentials. Mostly complete, with deliberate gaps.
+{
+  const today = new Date(); const iso = (d) => d.toISOString().slice(0, 10);
+  const daysAgo = (n) => iso(new Date(today.getTime() - n * 86400000));
+  const imm = [], docs = [], plans = [], contacts = [];
+  students.forEach((s, i) => {
+    if (i % 97 !== 5) for (const v of ['DTaP', 'MMR', 'Polio', 'Varicella']) imm.push({ id: `${s.id}-${v}`, studentSourcedId: s.id, vaccine: v, date: '2019-08-1' + (i % 9), doseNumber: 1, exemption: i % 61 === 3 ? 'medical' : 'none' });
+    for (const t of ['enrollment', 'emergency-card']) if (!(t === 'emergency-card' && i % 53 === 7)) docs.push({ id: `${s.id}-${t}`, subjectType: 'student', subjectSourcedId: s.id, type: t, title: t, status: 'on-file', issuedDate: '2025-08-1' + (i % 9) });
+    contacts.push({ id: `${s.id}-c1`, studentSourcedId: s.id, name: `Guardian of ${s.fn}`, relation: i % 3 ? 'mother' : 'father', phone: '555-01' + String(i % 100).padStart(2, '0'), isPrimary: 1 });
+    const r = s.r;
+    if (r.specialEd && r.specialEd !== 'None') plans.push({ id: `${s.id}-plan`, studentSourcedId: s.id, type: r.specialEd === '504' ? '504' : 'IEP', title: `${r.specialEd} plan`, status: 'active', startDate: '2025-08-20', reviewDate: i % 5 === 0 ? daysAgo(20) : daysAgo(-200), owner: 'STF-' + (6 + (i % 2)) });
+  });
+  const creds = [];
+  for (let i = 0; i < 9; i++) for (const t of ['background-check', 'mandated-reporter', 'cpr']) creds.push({ id: `STF-${i}-${t}`, staffSourcedId: 'STF-' + i, type: t, status: i === 4 && t === 'mandated-reporter' ? 'expired' : 'valid', issuedDate: '2025-08-01', expiresDate: t === 'cpr' && i === 2 ? daysAgo(-12) : daysAgo(-300) });
+  const drills = [];
+  seed.schools.forEach((sc, k) => { drills.push({ id: `${schoolId(sc.name)}-fire-1`, orgSourcedId: schoolId(sc.name), type: 'fire', date: daysAgo(12 + k), durationMinutes: 6, participants: sc.size }); if (k !== 1) drills.push({ id: `${schoolId(sc.name)}-lockdown-1`, orgSourcedId: schoolId(sc.name), type: 'lockdown', date: daysAgo(40 + k), durationMinutes: 15, participants: sc.size }); });
+  store.upsertFacts('immunizations', imm, 'seed'); store.upsertFacts('documents', docs, 'seed'); store.upsertFacts('contacts', contacts, 'seed');
+  if (plans.length) store.upsertFacts('learning_plans', plans, 'seed');
+  store.upsertFacts('staff_credentials', creds, 'seed'); store.upsertFacts('drills', drills, 'seed');
+  console.log(`  compliance: ${imm.length} immunizations, ${docs.length} documents, ${contacts.length} contacts, ${plans.length} plans, ${creds.length} credentials, ${drills.length} drills`);
 }
 // Staff
 for (let i = 0; i < 9; i++) store.upsertEntity({ id: 'STF-' + i, type: 'staff', firstName: 'Teacher', lastName: String(i), role: i < 6 ? 'teacher' : i < 8 ? 'counselor' : 'principal', schoolId: schoolId(seed.schools[i % 4].name) }, 'seed');

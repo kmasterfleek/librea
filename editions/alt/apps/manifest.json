@@ -1,0 +1,33 @@
+{
+  "edition": "alt",
+  "apps": [
+    {
+      "slug": "credit-tracker",
+      "file": "credit-tracker.html",
+      "title": "Credit tracker",
+      "prompt": "For every student, credits earned against the credits needed to graduate, and whether they are on pace for their grade level. Sort the furthest behind to the top.",
+      "scope": { "visibility": ["school", "staff"] }
+    },
+    {
+      "slug": "ada-attendance",
+      "file": "ada-attendance.html",
+      "title": "ADA attendance report",
+      "prompt": "Days enrolled and days present per student per month, with the school-wide apportionment rate, so I can show the county how attendance was counted.",
+      "scope": { "visibility": ["school", "staff"] }
+    },
+    {
+      "slug": "plan-reviews",
+      "file": "plan-reviews.html",
+      "title": "Plan review calendar",
+      "prompt": "Every active IEP, 504, behavior support and transition plan with its review date. Overdue first, then what is due in the next 30 and 60 days.",
+      "scope": { "visibility": ["school", "staff"] }
+    },
+    {
+      "slug": "re-engagement",
+      "file": "re-engagement.html",
+      "title": "Re-engagement list",
+      "prompt": "Students absent three or more of the last ten school days, with their advisor and the last contact note, so nobody drifts away unnoticed.",
+      "scope": { "visibility": ["school", "staff"] }
+    }
+  ]
+}

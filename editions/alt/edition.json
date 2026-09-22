@@ -1,0 +1,71 @@
+{
+  "id": "alt",
+  "name": "Librea Alt",
+  "tagline": "Credits, attendance, and the students who came back.",
+  "audience": "Alternative schools: charters, continuation and credit-recovery programs, independent study, therapeutic and day-treatment schools, court and community schools, and indigenous or culturally-rooted schools.",
+  "vocabulary": {
+    "district": "district",
+    "school": "school",
+    "student": "student",
+    "family": "family",
+    "staff": "staff",
+    "teacher": "advisor",
+    "class": "section",
+    "grade": "grade",
+    "principal": "director"
+  },
+  "roles": ["admin", "staff", "student", "family"],
+  "features": {
+    "import": true,
+    "vibe": true,
+    "sql": true,
+    "compliance": true,
+    "onboarding": true,
+    "timeline": true,
+    "invites": true
+  },
+  "compliance": { "packs": ["core", "alt"] },
+  "onboarding": {
+    "mode": "import-or-manual",
+    "steps": ["school", "students", "advisors", "plans", "credits", "share"],
+    "labels": {
+      "school": "Your school",
+      "students": "Import or add students",
+      "advisors": "Advisors & caseloads",
+      "plans": "Plans on file (IEP / 504 / BSP)",
+      "credits": "Credits & courses",
+      "share": "Share the record"
+    },
+    "hints": {
+      "school": "Name, grades served, your authorizer or county office, and the school year calendar. Two minutes.",
+      "students": "Drop in the export your last vendor gave you (PowerSchool, Aeries, or plain OneRoster CSVs), then hand-add the students who enrolled this week. Mid-year enrollment is the normal case here, not the exception.",
+      "advisors": "Alternative schools run on advisors and case managers, not homerooms. Put each advisor on their sections; their caseload follows from that.",
+      "plans": "IEPs, 504s, behavior support plans, transition plans, credit-recovery plans — with the review date, so nothing goes overdue quietly.",
+      "credits": "Courses, sections, and how many credits each one carries. This is the number the whole school runs on.",
+      "share": "Invite advisors, students 16 and over, and guardians. Everyone gets a scoped view; nobody gets a data export they did not earn."
+    }
+  },
+  "theme": {
+    "accent": "#2f5d50",
+    "accent2": "#b5652f",
+    "logoText": "Librea Alt"
+  },
+  "copy": {
+    "homeHeadline": "Re-engagement, one credit at a time.",
+    "homeBody": "Alternative schools measure two things every day: who came back, and how close each student is to a diploma. Librea Alt keeps both in front of you — attendance tied to your funding, credits tied to graduation, plans tied to their review dates — in a record that lives on your own machine.",
+    "homeSecondary": "Students arrive mid-year, mid-semester, mid-week. The record is built to take them as they come.",
+    "onboardingIntro": "Six steps. Bring in whatever your last vendor gave you, then add the students who walked in this week by hand. None of this needs an IT department, and none of it leaves the building.",
+    "onboardingOutro": "That is the whole setup. From here the work is daily: mark attendance, post credits, keep the plans current.",
+    "complianceIntro": "What you can put in front of your authorizer, your county office, and your state — pulled from your own records, in plain language, with the gaps shown instead of hidden. Requirements vary by state and by authorizer; this is a checklist, not legal advice.",
+    "complianceOutro": "Every check here reads the same ledger your daily work writes to. If a number looks wrong, the row that made it is one click away.",
+    "inviteStudent": "You are old enough to hold your own account here. This code sets up your login. You will see your credits toward graduation, your attendance, your plan if you have one, and anything your advisor wrote that was meant for you to read. You can write your own part of the record too — it is your file.",
+    "inviteGuardian": "This code creates your account. You will see your student's credits toward graduation, their attendance, and the plans on file for them. Once your student turns 18 they decide what you can see, and we will tell you when that changes.",
+    "inviteStaff": "This code sets up your advisor account. You will see the students on your caseload — their credits, attendance, plans, and case notes — and nothing about students who are not yours.",
+    "creditsLabel": "Credits earned",
+    "creditsGoalLabel": "Credits to graduate",
+    "attendanceLabel": "Days present",
+    "footer": "This school's record lives on this school's machine. No student data leaves the building."
+  },
+  "seed": "editions/alt/seed.js",
+  "templates": null
+}

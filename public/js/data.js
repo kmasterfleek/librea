@@ -1,6 +1,7 @@
 // Data: the schema your scope can see, and a read-only SQL console over it.
 // The database enforces the scope, so the same console is safe for every role.
 import { api, h, clear, render, state, status } from '/app.js';
+import { t } from '/js/edition.js';
 
 const EXAMPLES = [
   ['Absence rate by school',
@@ -45,22 +46,22 @@ export async function show() {
   const out = h('div');
   const err = h('p.err', { role: 'alert' });
   const meta = h('p.small.muted', { 'aria-live': 'polite' });
-  const runBtn = h('button.btn', { onclick: () => run() }, 'Run');
-  const copyBtn = h('button.btn.ghost.small', { disabled: true, onclick: () => copyCsv(copyBtn) }, 'Copy as CSV');
+  const runBtn = h('button.btn', { onclick: () => run() }, t('Run'));
+  const copyBtn = h('button.btn.ghost.small', { disabled: true, onclick: () => copyCsv(copyBtn) }, t('Copy as CSV'));
 
   const console_ = h('div.card',
-    h('div.spread', h('h2', { style: 'margin-top:0' }, 'Query'), h('span.small.muted', schema.dialect === 'sqlite' ? 'SQLite · read-only' : schema.dialect)),
-    h('label', { for: 'sql' }, 'One SELECT statement'),
+    h('div.spread', h('h2', { style: 'margin-top:0' }, t('Query')), h('span.small.muted', schema.dialect === 'sqlite' ? 'SQLite · read-only' : schema.dialect)),
+    h('label', { for: 'sql' }, t('One SELECT statement')),
     editor,
-    h('div.row', { style: 'margin-top:10px' }, runBtn, copyBtn, h('span.small.muted', 'Cmd or Ctrl + Enter runs it.')),
+    h('div.row', { style: 'margin-top:10px' }, runBtn, copyBtn, h('span.small.muted', t('Cmd or Ctrl + Enter runs it.'))),
     h('div.chips', { style: 'margin-top:12px' }, EXAMPLES.map(([label, sql]) =>
       h('button', { type: 'button', title: 'Load this query', onclick: () => { editor.value = sql; run(); } }, label))),
     err, meta, out,
   );
 
   render(h('div',
-    h('h1', 'Data'),
-    h('p.lede', 'Your records as tables. Everything here is read-only and already narrowed to what your account may see, by the database itself.'),
+    h('h1', t('Data')),
+    h('p.lede', t('Your records as tables. Everything here is read-only and already narrowed to what your account may see, by the database itself.')),
     ['admin', 'staff'].includes(state.user?.role) ? statusCard() : null,
     h('div.datagrid', { style: 'margin-top:18px' },
       schemaBrowser(schema),
@@ -70,7 +71,7 @@ export async function show() {
   async function run() {
     const sql = editor.value.trim();
     err.textContent = '';
-    if (!sql) { err.textContent = 'Write a query first.'; return; }
+    if (!sql) { err.textContent = t('Write a query first.'); return; }
     runBtn.disabled = true;
     meta.textContent = 'Running…';
     clear(out);
@@ -92,7 +93,7 @@ export async function show() {
 }
 
 function resultTable(r) {
-  if (!r.rowCount) return h('p.empty', 'The query ran and matched no rows.');
+  if (!r.rowCount) return h('p.empty', t('The query ran and matched no rows.'));
   return h('div.tablewrap', { style: 'margin-top:10px;max-height:460px;overflow:auto' }, h('table',
     h('thead', h('tr', r.columns.map((c) => h('th', { scope: 'col' }, c)))),
     h('tbody', r.rows.map((row) => h('tr', r.columns.map((c) => h('td', cell(row[c])))))),
@@ -103,23 +104,23 @@ const cell = (v) => (v == null ? h('span.muted', '—') : typeof v === 'number' 
 
 function schemaBrowser(schema) {
   const box = h('div.card', { style: 'position:sticky;top:64px;max-height:78vh;overflow:auto' },
-    h('h2', { style: 'margin-top:0' }, 'Tables'),
-    h('p.small.muted', { style: 'margin-top:0' }, 'Click a table to query it, or a column to insert its name.'),
+    h('h2', { style: 'margin-top:0' }, t('Tables')),
+    h('p.small.muted', { style: 'margin-top:0' }, t('Click a table to query it, or a column to insert its name.')),
     schema.tables.map(tableBlock),
     schema.notes?.length ? h('div', { style: 'margin-top:14px' },
-      h('h3', 'In your scope'),
+      h('h3', t('In your scope')),
       h('ul.small.muted', { style: 'padding-left:18px;margin:0' }, schema.notes.map((n) => h('li', n)))) : null,
   );
   return box;
 }
 
-function tableBlock(t) {
+function tableBlock(spec) {
   return h('details', { style: 'border-bottom:1px solid var(--line);padding:2px 0' },
-    h('summary', h('span.mono', { style: 'font-weight:600' }, t.name), h('span.small.muted', ` · ${t.columns.length}`)),
-    h('p.small.muted', { style: 'margin:4px 0 6px' }, t.doc),
+    h('summary', h('span.mono', { style: 'font-weight:600' }, spec.name), h('span.small.muted', ` · ${spec.columns.length}`)),
+    h('p.small.muted', { style: 'margin:4px 0 6px' }, spec.doc),
     h('div.row', { style: 'gap:6px;margin-bottom:8px' },
-      h('button.btn.ghost.small', { onclick: () => insert(`SELECT * FROM ${t.name} LIMIT 50`, true) }, 'Query this table')),
-    h('div.chips', t.columns.map((c) => h('button', { type: 'button', title: 'Insert ' + c, onclick: () => insert(c) }, c))),
+      h('button.btn.ghost.small', { onclick: () => insert(`SELECT * FROM ${spec.name} LIMIT 50`, true) }, t('Query this table'))),
+    h('div.chips', spec.columns.map((c) => h('button', { type: 'button', title: t('Insert ') + c, onclick: () => insert(c) }, c))),
   );
 }
 
@@ -139,8 +140,8 @@ function insert(text, replace = false) {
 function statusCard() {
   const body = h('div', h('p.small.muted', 'Loading…'));
   const card = h('div.card', { style: 'margin-top:18px' },
-    h('h2', { style: 'margin-top:0' }, 'The projection'),
-    h('p.small.muted', { style: 'margin-top:0' }, 'These tables are rebuilt from the ledger. The ledger is the record; this is a view of it you can query.'),
+    h('h2', { style: 'margin-top:0' }, t('The projection')),
+    h('p.small.muted', { style: 'margin-top:0' }, t('These tables are rebuilt from the ledger. The ledger is the record; this is a view of it you can query.')),
     body);
   load();
   async function load() {
@@ -155,8 +156,8 @@ function statusCard() {
         h('p.small.muted.mono', { style: 'margin:4px 0 10px;word-break:break-all' }, s.file),
         countTable(s.counts),
         h('div.row', { style: 'margin-top:12px' },
-          h('button.btn.ghost.small', { onclick: (e) => rebuild(e.target) }, 'Rebuild from the ledger'),
-          h('button.btn.ghost.small', { onclick: (e) => derive(e.target) }, 'Recompute metrics from facts')),
+          h('button.btn.ghost.small', { onclick: (e) => rebuild(e.target) }, t('Rebuild from the ledger')),
+          h('button.btn.ghost.small', { onclick: (e) => derive(e.target) }, t('Recompute metrics from facts'))),
       );
     } catch (e) { body.replaceChildren(h('p.err', e.message)); }
   }
@@ -181,9 +182,9 @@ function countTable(counts) {
   const rows = Object.entries(counts || {});
   if (!rows.length) return null;
   return h('div.tablewrap', { style: 'max-height:240px;overflow:auto' }, h('table',
-    h('thead', h('tr', h('th', { scope: 'col' }, 'Table'), h('th', { scope: 'col' }, 'Rows'))),
-    h('tbody', rows.map(([t, n]) => h('tr',
-      h('td', h('span.mono', t)),
+    h('thead', h('tr', h('th', { scope: 'col' }, t('Table')), h('th', { scope: 'col' }, t('Rows')))),
+    h('tbody', rows.map(([name, n]) => h('tr',
+      h('td', h('span.mono', name)),
       h('td', n ? String(n) : h('span.muted', '0'))))),
   ));
 }

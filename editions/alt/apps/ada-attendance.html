@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADA attendance report</title>
+<style>
+:root{--bg:#f7f5f1;--card:#fff;--ink:#1f2421;--mut:#68716b;--line:#e2ded5;--accent:#2f5d50;--warm:#b5652f;--bad:#a8443f;--ok:#4b7a5e;--radius:12px}
+@media (prefers-color-scheme:dark){:root{--bg:#161a18;--card:#1e2320;--ink:#eceae4;--mut:#9aa39c;--line:#333a35;--accent:#7fb3a1;--warm:#dd9257;--bad:#d98a85;--ok:#8fc0a3}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:1080px;margin:0 auto;padding:26px 20px 40px}
+h1{font-size:clamp(21px,4vw,28px);margin:0 0 6px;letter-spacing:-.01em}
+h2{font-size:16px;margin:0 0 12px}
+.sub{color:var(--mut);margin:0 0 22px;max-width:66ch}
+.grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(min(210px,100%),1fr))}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px}
+.stat{font-size:28px;font-weight:650;letter-spacing:-.02em;margin:2px 0 0}
+.lab{color:var(--mut);font-size:12.5px;text-transform:uppercase;letter-spacing:.06em}
+canvas{width:100%;height:240px;display:block}
+table{width:100%;border-collapse:collapse;font-size:14.5px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line)}
+th{color:var(--mut);font-weight:600;font-size:12.5px;text-transform:uppercase;letter-spacing:.05em}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+.tools{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 14px;align-items:end}
+label{display:block;font-size:12.5px;color:var(--mut);margin-bottom:4px}
+input,select{font:inherit;color:inherit;background:var(--card);border:1px solid var(--line);border-radius:9px;padding:8px 10px}
+.low{color:var(--bad);font-weight:600}
+.note{border-left:3px solid var(--warm);padding:8px 0 8px 12px;color:var(--mut);font-size:14px;margin:18px 0 0}
+.err{color:var(--bad);padding:12px;border:1px solid currentColor;border-radius:10px;margin-top:16px}
+.scroll{overflow-x:auto}
+</style>
+</head>
+<body>
+<main class="wrap">
+<h1>ADA attendance report</h1>
+<p class="sub">Days enrolled and days present, per student, per month &mdash; the two columns apportionment is calculated from. A student who enrolled on the 14th is counted from the 14th, not from the first of the month, so mid-year enrollment does not quietly sink the rate.</p>
+<section class="grid" id="tiles" aria-live="polite"></section>
+<section class="card" style="margin-top:16px">
+  <h2>Attendance rate by month</h2>
+  <canvas id="byMonth" aria-label="Attendance rate by month"></canvas>
+  <p class="lab" id="monthNote"></p>
+</section>
+<section class="card" style="margin-top:16px">
+  <div class="tools">
+    <div><label for="m">Month</label><select id="m"></select></div>
+    <div><label for="g">Grade</label><select id="g"><option value="">All</option></select></div>
+    <div><label for="q">Find a student</label><input id="q" type="search" placeholder="name or id"></div>
+  </div>
+  <div class="scroll"><table>
+    <thead><tr><th>Student</th><th class="num">Grade</th><th class="num">Days enrolled</th><th class="num">Days present</th><th class="num">Rate</th></tr></thead>
+    <tbody id="rows"></tbody>
+  </table></div>
+  <p class="lab" id="count"></p>
+  <p class="note">Present counts <strong>present</strong>, <strong>tardy</strong>, and <strong>remote</strong> (independent-study contact days). Absent and excused both count as not present &mdash; an excused absence is still a day your school is not funded for. How your state actually apportions independent study varies; check your own rules before you file.</p>
+</section>
+<div id="err" class="err" role="alert" hidden></div>
+</main>
+<script>
+var $ = function (s) { return document.querySelector(s); };
+function fail(e) { var b = $('#err'); b.hidden = false; b.textContent = e && e.message ? e.message : String(e); }
+function nameOf(r) { var n = [r.first, r.last].filter(Boolean).join(' '); return n || r.id; }
+function rate(p, e) { return e ? Math.round((p / e) * 1000) / 10 : 0; }
+var ALL = [], MONTHS = [];
+
+var SQL =
+  "SELECT substr(a.date, 1, 7) AS month, a.studentSourcedId AS id, " +
+  "s.givenName AS first, s.familyName AS last, s.grade AS grade, " +
+  "COUNT(*) AS enrolled, " +
+  "SUM(CASE WHEN a.code IN ('present','tardy','remote') THEN 1 ELSE 0 END) AS present " +
+  "FROM attendance a JOIN students s ON s.sourcedId = a.studentSourcedId " +
+  "GROUP BY month, a.studentSourcedId, s.givenName, s.familyName, s.grade " +
+  "ORDER BY month DESC, present ASC";
+
+function monthLabel(m) {
+  var names = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  var parts = String(m).split('-');
+  return (names[Number(parts[1]) - 1] || m) + ' ' + parts[0];
+}
+
+function render() {
+  var m = $('#m').value, g = $('#g').value, q = $('#q').value.trim().toLowerCase();
+  var rows = ALL.filter(function (r) {
+    if (m && r.month !== m) return false;
+    if (g && String(r.grade) !== g) return false;
+    if (q && (nameOf(r) + ' ' + r.id).toLowerCase().indexOf(q) < 0) return false;
+    return true;
+  });
+  var body = $('#rows');
+  body.textContent = '';
+  rows.slice(0, 500).forEach(function (r) {
+    var pct = rate(r.present, r.enrolled);
+    body.appendChild(librea.el('tr', null, [
+      librea.el('td', { text: nameOf(r) }),
+      librea.el('td', { class: 'num', text: String(r.grade == null ? '—' : r.grade) }),
+      librea.el('td', { class: 'num', text: String(r.enrolled) }),
+      librea.el('td', { class: 'num', text: String(r.present) }),
+      librea.el('td', { class: 'num' + (pct < 80 ? ' low' : ''), text: pct + '%' }),
+    ]));
+  });
+  var en = rows.reduce(function (a, r) { return a + r.enrolled; }, 0);
+  var pr = rows.reduce(function (a, r) { return a + r.present; }, 0);
+  $('#count').textContent = rows.length + ' student-month row' + (rows.length === 1 ? '' : 's') + ' — ' + pr + ' present of ' + en + ' enrolled days (' + rate(pr, en) + '%)';
+}
+
+(async function () {
+  try {
+    await librea.ready();
+    var res = await librea.sql(SQL, { limit: 2000 });
+    ALL = res.rows.map(function (r) { r.enrolled = Number(r.enrolled) || 0; r.present = Number(r.present) || 0; return r; });
+    if (res.truncated) $('#monthNote').textContent = 'More rows exist than fit one query; narrow by month for a filing-ready figure.';
+
+    ALL.forEach(function (r) { if (MONTHS.indexOf(r.month) < 0) MONTHS.push(r.month); });
+    MONTHS.sort();
+    var totals = MONTHS.map(function (m) {
+      var set = ALL.filter(function (r) { return r.month === m; });
+      return { month: m, enrolled: set.reduce(function (a, r) { return a + r.enrolled; }, 0), present: set.reduce(function (a, r) { return a + r.present; }, 0), students: set.length };
+    });
+
+    var en = totals.reduce(function (a, t) { return a + t.enrolled; }, 0);
+    var pr = totals.reduce(function (a, t) { return a + t.present; }, 0);
+    var last = totals[totals.length - 1] || { enrolled: 0, present: 0, students: 0 };
+    [['Apportionment rate, all months', rate(pr, en) + '%'],
+     ['Total days present', pr],
+     ['Total days enrolled', en],
+     ['Students counted this month', last.students]
+    ].forEach(function (row) {
+      $('#tiles').appendChild(librea.el('div', { class: 'card' }, [
+        librea.el('div', { class: 'lab', text: row[0] }),
+        librea.el('div', { class: 'stat', text: String(row[1]) }),
+      ]));
+    });
+
+    librea.chart.line($('#byMonth'), totals.map(function (t) { return monthLabel(t.month); }), totals.map(function (t) { return rate(t.present, t.enrolled); }), { color: '#2f5d50', format: function (v) { return Math.round(v) + '%'; }, emptyText: 'No attendance rows yet.' });
+
+    MONTHS.slice().reverse().forEach(function (m, i) { $('#m').appendChild(librea.el('option', { value: m, text: monthLabel(m), selected: i === 0 })); });
+    $('#m').appendChild(librea.el('option', { value: '', text: 'All months' }));
+    var grades = [];
+    ALL.forEach(function (r) { if (r.grade != null && grades.indexOf(r.grade) < 0) grades.push(r.grade); });
+    grades.sort(function (a, b) { return a - b; });
+    grades.forEach(function (gr) { $('#g').appendChild(librea.el('option', { value: String(gr), text: 'Grade ' + gr })); });
+
+    ['#m', '#g', '#q'].forEach(function (sel) { $(sel).addEventListener('input', render); });
+    render();
+  } catch (e) { fail(e); }
+  librea.footer(document.querySelector('.wrap'));
+})();
+</script>
+</body>
+</html>

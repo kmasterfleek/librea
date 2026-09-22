@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Weekly family update</title>
+<style>
+:root{--bg:#faf6f0;--card:#fff;--ink:#241f1a;--mut:#6f6557;--line:#e8dfd2;--accent:#a8622f;--ok:#6d8f6a;--warn:#b4585f;--radius:14px}
+@media (prefers-color-scheme:dark){:root{--bg:#1b1815;--card:#241f1a;--ink:#f2ece4;--mut:#a99c8c;--line:#3b342b;--accent:#d9915c;--ok:#8fae8c}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+.wrap{max-width:800px;margin:0 auto;padding:28px 20px 40px}
+h1{font-size:clamp(23px,4vw,31px);margin:0 0 4px;letter-spacing:-.015em}
+h2{font-size:16px;margin:0 0 12px;letter-spacing:-.005em}
+.sub{color:var(--mut);margin:0 0 22px;max-width:60ch}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px;margin:0 0 16px}
+.tools{display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin:0 0 20px}
+label{display:block;font-size:12.5px;color:var(--mut);margin-bottom:4px}
+select{font:inherit;color:inherit;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:9px 11px;max-width:100%}
+.lab{color:var(--mut);font-size:12.5px;text-transform:uppercase;letter-spacing:.06em}
+.days{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 0}
+.day{border:1px solid var(--line);border-radius:10px;padding:8px 10px;min-width:74px;text-align:center}
+.day b{display:block;font-size:13px;font-weight:600}
+.day span{font-size:12px;color:var(--mut)}
+.present{border-color:var(--ok);background:rgba(109,143,106,.10)}
+.away{border-color:var(--warn);background:rgba(180,88,95,.10)}
+.frag{border-left:3px solid var(--line);padding:2px 0 2px 13px;margin:0 0 16px}
+.frag .who{font-size:12.5px;color:var(--mut)}
+.goal{display:flex;gap:10px;align-items:flex-start;padding:7px 0;border-bottom:1px solid var(--line)}
+.goal:last-child{border-bottom:0}
+.dot{flex:none;width:9px;height:9px;border-radius:50%;background:var(--accent);margin-top:8px}
+.pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:12px;background:rgba(168,98,47,.13);color:var(--accent)}
+.pill.late{background:rgba(180,88,95,.14);color:var(--warn)}
+.empty{color:var(--mut);padding:18px;text-align:center;border:1px dashed var(--line);border-radius:var(--radius)}
+.err{color:#b4585f;padding:12px;border:1px solid #b4585f33;border-radius:10px;background:#b4585f0d}
+</style>
+</head>
+<body>
+<main class="wrap">
+<h1>This week at the pod</h1>
+<p class="sub">One learner, one week: who was here, what got written down, and where the learning plan stands. Written for the people at the dinner table.</p>
+<div class="tools">
+  <div><label for="who">Learner</label><select id="who"></select></div>
+</div>
+<section class="card"><h2>Days</h2><div id="att"><p class="empty">Loading.</p></div></section>
+<section class="card"><h2>New this week</h2><div id="voices"></div></section>
+<section class="card"><h2>Learning plan</h2><div id="plan"></div></section>
+<div id="err" class="err" role="alert" hidden></div>
+</main>
+<script>
+var $ = function (s, r) { return (r || document).querySelector(s); };
+function fail(e) { var b = $('#err'); b.hidden = false; b.textContent = e && e.message ? e.message : String(e); }
+function note(m) { var n = document.createElement('p'); n.className = 'empty'; n.textContent = m; return n; }
+function nameOf(p) { var n = [p.firstName, p.lastName].filter(Boolean).join(' '); return n || p.preferredName || p.id; }
+function q(s) { return "'" + String(s).replace(/'/g, "''") + "'"; }
+function dayName(iso) { return new Date(iso + 'T12:00:00Z').toLocaleDateString(undefined, { weekday: 'short', timeZone: 'UTC' }); }
+function dayNum(iso) { return iso.slice(8) + '/' + iso.slice(5, 7); }
+function ago(iso) {
+  var d = Math.round((Date.now() - new Date(iso).getTime()) / 86400000);
+  return d <= 0 ? 'today' : d === 1 ? 'yesterday' : d + ' days ago';
+}
+
+(async function () {
+  try {
+    await librea.ready();
+    var r = await librea.people({ type: 'student', limit: 200 });
+    var people = r.people || [];
+    if (!people.length) { $('#att').replaceChildren(note('No learners in this app’s scope yet.')); return; }
+    people.sort(function (a, b) { return nameOf(a) < nameOf(b) ? -1 : 1; });
+    people.forEach(function (p) { $('#who').appendChild(librea.el('option', { value: p.id, text: nameOf(p) })); });
+    $('#who').addEventListener('change', function () { render($('#who').value); });
+    await render(people[0].id);
+  } catch (e) { fail(e); }
+  librea.footer(document.querySelector('.wrap'));
+})();
+
+async function render(id) {
+  $('#err').hidden = true;
+  var since = new Date(Date.now() - 8 * 86400000).toISOString().slice(0, 10);
+
+  // ---- days here, days away
+  var box = $('#att');
+  box.replaceChildren();
+  try {
+    var a = await librea.sql(
+      'SELECT date, code, note FROM attendance WHERE studentSourcedId = ' + q(id) +
+      ' AND date >= ' + q(since) + ' ORDER BY date');
+    if (!a.rowCount) box.appendChild(note('No attendance taken this week. That is worth fixing before it becomes a habit.'));
+    else {
+      var here = 0, strip = librea.el('div', { class: 'days' });
+      a.rows.forEach(function (row) {
+        var away = row.code === 'absent' || row.code === 'excused';
+        if (!away) here++;
+        strip.appendChild(librea.el('div', { class: 'day ' + (away ? 'away' : 'present'), title: row.note || '' }, [
+          librea.el('b', { text: dayName(row.date) }),
+          librea.el('span', { text: dayNum(row.date) }),
+          librea.el('span', { text: row.code })
+        ]));
+      });
+      box.appendChild(librea.el('p', { class: 'lab', text: here + ' of ' + a.rowCount + ' days here' }));
+      box.appendChild(strip);
+    }
+  } catch (e) { box.appendChild(note('Attendance is unavailable: ' + e.message)); }
+
+  // ---- what got written down
+  var vbox = $('#voices');
+  vbox.replaceChildren();
+  var f = await librea.fragments(id, { limit: 60 });
+  var recent = (f.fragments || []).filter(function (x) { return x.createdAt >= since; });
+  var list = recent.length ? recent : (f.fragments || []).slice(0, 3);
+  if (!list.length) vbox.appendChild(note('Nothing written yet. A photo of something built counts.'));
+  else {
+    if (!recent.length) vbox.appendChild(librea.el('p', { class: 'lab', text: 'Nothing new this week — showing the most recent instead' }));
+    list.forEach(function (x) {
+      vbox.appendChild(librea.el('div', { class: 'frag' }, [
+        librea.el('p', { style: { margin: '0 0 4px' }, text: x.text }),
+        librea.el('div', { class: 'who', text: (x.author && x.author.name ? x.author.name : x.kind) + ' · ' + x.kind + ' · ' + ago(x.createdAt) })
+      ]));
+    });
+  }
+
+  // ---- the plan
+  var pbox = $('#plan');
+  pbox.replaceChildren();
+  try {
+    var p = await librea.sql(
+      'SELECT type, title, status, reviewDate, goals FROM learning_plans WHERE studentSourcedId = ' + q(id) + ' LIMIT 5');
+    if (!p.rowCount) pbox.appendChild(note('No learning plan on file yet.'));
+    else p.rows.forEach(function (row) {
+      var late = row.reviewDate && row.reviewDate < new Date().toISOString().slice(0, 10);
+      pbox.appendChild(librea.el('p', { style: { margin: '0 0 10px' } }, [
+        librea.el('strong', { text: row.title || row.type }), ' ',
+        librea.el('span', { class: 'pill' + (late ? ' late' : ''), text: late ? 'review overdue · ' + row.reviewDate : 'review ' + (row.reviewDate || 'unscheduled') })
+      ]));
+      String(row.goals || '').split('||').filter(Boolean).forEach(function (g) {
+        pbox.appendChild(librea.el('div', { class: 'goal' }, [librea.el('span', { class: 'dot' }), librea.el('span', { text: g })]));
+      });
+    });
+  } catch (e) { pbox.appendChild(note('Learning plans are unavailable: ' + e.message)); }
+}
+</script>
+</body>
+</html>
