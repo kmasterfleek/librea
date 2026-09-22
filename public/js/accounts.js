@@ -47,7 +47,8 @@ function row(u) {
   return h('tr',
     h('td', h('strong', u.username)),
     h('td', u.displayName || '—'),
-    h('td', h('span.chip', { title: t(ROLE_COPY[u.role] || '') }, u.role)),
+    h('td', h('span.chip', { title: t(ROLE_COPY[u.role] || '') }, u.role),
+      u.caseload ? h('span.chip', { style: 'margin-left:4px', title: t('only sees students in their own sections and plans') }, t('caseload')) : null),
     h('td.wrap.small.muted', linkedIds(u).join(', ') || '—'),
     h('td', h('span', { style: `color:var(${active ? '--ok' : '--ink-faint'});font-weight:600;font-size:.82rem` }, active ? t('Active') : t('Deactivated'))),
     h('td', h('div.row', { style: 'gap:6px;flex-wrap:nowrap' },
@@ -77,6 +78,10 @@ function userForm(user) {
   const role = h('select', { id: 'nr', onchange: () => syncRole() }, ROLES.map((r) => h('option', { value: r }, r)));
   role.value = user?.role || 'staff';
   const roleHint = h('p.small.muted', { style: 'margin:4px 0 0' });
+  const caseload = h('input', { type: 'checkbox', id: 'ncl', checked: !!user?.caseload });
+  const caseloadBox = h('div.field', { style: 'margin-top:10px' },
+    h('label.check', caseload, h('span', t('Caseload only'))),
+    h('p.small.muted', { style: 'margin:4px 0 0' }, t('only sees students in their own sections and plans')));
   const linkBox = h('div.field');
   const err = h('p.err', { role: 'alert' });
   const chosen = h('div.chips', { style: 'margin-top:8px' });
@@ -90,6 +95,7 @@ function userForm(user) {
       h('div', h('label', { for: 'nr' }, t('Role')), role)),
     editing ? h('p.small.muted', { style: 'margin:4px 0 0' }, t('Leave the password blank to keep the current one.')) : null,
     roleHint,
+    caseloadBox,
     linkBox,
     err,
     h('div.row', { style: 'margin-top:12px' },
@@ -102,6 +108,7 @@ function userForm(user) {
     roleHint.textContent = t(ROLE_COPY[role.value] || '');
     if (!first) picked = [];
     drawChosen();
+    caseloadBox.hidden = role.value !== 'staff';
     clear(linkBox);
     if (role.value === 'student' || role.value === 'family') linkBox.appendChild(picker(role.value));
   }
@@ -139,7 +146,7 @@ function userForm(user) {
   async function submit(e) {
     e.preventDefault();
     err.textContent = '';
-    const body = { role: role.value, displayName: displayNameIn.value || '' };
+    const body = { role: role.value, displayName: displayNameIn.value || '', caseload: role.value === 'staff' && caseload.checked };
     if (!editing) { body.username = username.value; body.password = password.value; }
     else if (password.value) body.password = password.value;
     if (role.value === 'student') {

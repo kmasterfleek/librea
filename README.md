@@ -152,7 +152,7 @@ docs/          architecture, security, editions, API, adopter CLAUDE.md
 
 ## License
 
-**Undecided.** No license file ships with this repository yet, which means default copyright applies and you do not yet have permission to redistribute. If you are waiting on this before adopting Librea, say so — it moves the decision up the list.
+GNU General Public License v3.0 or later. See [LICENSE](LICENSE). You may run, study, change and redistribute Librea, including for a fee, provided changes you distribute stay under the same license. A school running it for itself has no obligations beyond that. Copyright remains with the contributors.
 
 ## Credits
 

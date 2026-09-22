@@ -35,3 +35,6 @@ data/librea.sqlite-wal
 
 # invite codes are credentials
 data/invites.json
+
+# local ruflo hook wiring; references helper scripts that are not part of Librea
+.claude/settings.json

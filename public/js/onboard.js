@@ -1,7 +1,7 @@
 // The from-scratch wizard. Which screens appear, and in what order, is the
 // edition's business; this file only knows how to walk through them.
 import { h, clear, render, go } from '/app.js';
-import { t, edition, say } from '/js/edition.js';
+import { t, edition, copy, say } from '/js/edition.js';
 import * as PEOPLE from '/js/onboard-people.js';
 import * as MORE from '/js/onboard-records.js';
 
@@ -9,9 +9,10 @@ import * as MORE from '/js/onboard-records.js';
 const SYNONYMS = {
   organization: ['organization', 'organisation', 'org', 'school', 'district', 'community', 'pod', 'site', 'program', 'campus', 'centre', 'center'],
   people: ['people', 'person', 'student', 'learner', 'kid', 'child', 'youth', 'roster', 'enrollment', 'enrolment', 'member'],
-  staff: ['staff', 'guide', 'teacher', 'adult', 'team', 'educator', 'mentor', 'facilitator'],
+  staff: ['staff', 'guide', 'teacher', 'advisor', 'adviser', 'adult', 'team', 'educator', 'mentor', 'facilitator', 'caseload'],
   families: ['family', 'guardian', 'parent', 'household', 'caregiver'],
   records: ['record', 'paperwork', 'document', 'file', 'health', 'immunization', 'immunisation', 'credential', 'plan'],
+  credits: ['credit', 'course', 'class', 'section', 'transcript', 'graduation', 'diploma'],
   drills: ['drill', 'safety', 'emergency'],
   compliance: ['compliance', 'legit', 'requirement', 'audit', 'checklist'],
   share: ['share', 'invite', 'account', 'login', 'people-in'],
@@ -24,6 +25,7 @@ const SCREENS = {
   staff: PEOPLE.staff,
   families: PEOPLE.families,
   records: MORE.records,
+  credits: MORE.credits,
   drills: MORE.drills,
   compliance: MORE.compliance,
   share: MORE.share,
@@ -36,6 +38,7 @@ const HEADINGS = {
   staff: 'Your staff',
   families: 'Families',
   records: 'Records on file',
+  credits: 'Courses and credits',
   drills: 'Safety drills',
   compliance: 'What you have to be able to show',
   share: 'Bring everyone in',
@@ -60,10 +63,11 @@ function resolver() {
   };
 }
 
-/** The ordered list of steps for this edition: { key, canon, label }. */
+/** The ordered list of steps for this edition: { key, canon, label, hint }. */
 export function steps() {
   const resolve = resolver();
-  const raw = edition().onboarding?.steps || ['organization', 'people', 'families', 'compliance', 'apps'];
+  const onboarding = edition().onboarding || {};
+  const raw = onboarding.steps || ['organization', 'people', 'families', 'compliance', 'apps'];
   const seen = new Set();
   const out = [];
   for (const name of raw) {
@@ -71,7 +75,13 @@ export function steps() {
     while (seen.has(canon)) canon = canon + '+'; // two steps that resolve the same still each get a screen
     const real = canon.replace(/\+$/, '');
     seen.add(canon);
-    out.push({ key: name, canon: real, label: t(titleCase(String(name))) });
+    // An edition may name and explain its own steps; otherwise we title-case the id.
+    out.push({
+      key: name, canon: real,
+      label: onboarding.labels?.[name] || t(titleCase(String(name))),
+      heading: onboarding.labels?.[name] || t(HEADINGS[real] || titleCase(String(name))),
+      hint: onboarding.hints?.[name] || '',
+    });
   }
   return out.filter((s) => SCREENS[s.canon]);
 }
@@ -102,12 +112,19 @@ export async function show({ args }) {
     Promise.resolve(SCREENS[step.canon]())
       .then((node) => {
         clear(body).append(
-          h('h2', { style: 'margin-top:1em' }, t(HEADINGS[step.canon] || step.label)),
+          h('h2', { style: 'margin-top:1em' }, step.heading),
+          step.hint ? h('p.notice', { style: 'margin-bottom:14px' }, step.hint) : null,
           node,
+          index >= list.length - 1 ? outro() : null,
           footer(),
         );
       })
       .catch((e) => clear(body).appendChild(h('p.err', e.message)));
+  }
+
+  function outro() {
+    const text = copy('onboarding_outro', 'onboardingOutro');
+    return text ? h('p.lede', { style: 'margin-top:18px' }, text) : null;
   }
 
   function footer() {

@@ -20,13 +20,15 @@ export async function show() {
   const personal = await personalCard(role);
 
   const headline = copy('home_headline', 'homeHeadline');
-  const subhead = copy('home_subhead', 'homeSubhead');
+  const subhead = copy('home_subhead', 'homeSubhead', 'homeBody');
+  const secondary = copy('home_secondary', 'homeSecondary');
 
   render(h('div',
     h('h1', headline && !personalRole(role) ? headline : greeting()),
     h('p.lede', personalRole(role)
       ? say(['home_subhead_personal', 'homeSubheadPersonal'], 'Your record lives here, and you help write it.')
       : (subhead || t('Everything below is computed on this machine from the records in your own folder.'))),
+    secondary && !personalRole(role) ? h('p.small.muted', { style: 'margin:-6px 0 12px;max-width:60ch' }, secondary) : null,
     role === 'admin' ? setUpCard(stats) : null,
     personal,
     personalRole(role) ? h('p.notice', { style: 'margin-top:18px' },

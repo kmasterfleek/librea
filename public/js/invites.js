@@ -32,7 +32,11 @@ export function inviteMessage(invite, { orgName = '', who = '', child = '', invi
   for (const base of ['student', 'teacher']) { vars[base] = kid || named; vars[word(base)] = vars[base]; }
   for (const base of ['family', 'staff']) { vars[base] = named; vars[word(base)] = named; }
   vars.org = orgName; vars.orgName = orgName; vars.child = vars.student;
-  return fill(template, vars);
+  const body = fill(template, vars);
+  // An edition may write the human half and leave the mechanics to us.
+  const mechanics = /\{(url|code)\}/.test(template) ? '' :
+    `\n\nGo to ${vars.url} and enter the code ${invite.code} to make your login.${vars.inviter ? `\n\n— ${vars.inviter}` : ''}`;
+  return body + mechanics;
 }
 
 /**

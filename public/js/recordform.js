@@ -128,7 +128,14 @@ async function generic(table) {
   if (!schemaCache) schemaCache = await api('/api/sql/schema').catch(() => ({ tables: [] }));
   const found = (schemaCache.tables || []).find((x) => x.name === table);
   if (!found) return null;
-  return { title: labelize(table), note: found.doc, subject: found.columns.find((c) => /SourcedId$/.test(c)), fields: found.columns.filter((c) => c !== 'id').map((c) => [c, labelize(c), 'text']) };
+  // OneRoster-shaped tables are keyed by sourcedId; the rest by id.
+  const key = found.columns.includes('sourcedId') ? 'sourcedId' : 'id';
+  // No `subject`: on a generated form we do not know which link is mandatory
+  // (a term has no parent term), so we let the server's validation speak.
+  return {
+    title: labelize(table), note: found.doc, key,
+    fields: found.columns.filter((c) => c !== 'id').map((c) => [c, labelize(c), 'text']),
+  };
 }
 
 const newRowId = (table) => `${table.slice(0, 4).replace(/_/g, '')}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`.toUpperCase();
@@ -164,12 +171,14 @@ export async function recordForm(table, { prefill = {}, onSaved, heading = true 
   async function submit(e) {
     e.preventDefault();
     err.textContent = '';
-    const row = { id: prefill.id || newRowId(table) };
+    const key = spec.key || 'id';
+    const row = {};
     for (const [name, ctl] of controls) {
       const v = ctl.type === 'checkbox' ? (ctl.checked ? 1 : 0) : ctl.value.trim();
-      if (v === '' ) continue;
+      if (v === '') continue;
       row[name] = ctl.type === 'number' ? Number(v) : v;
     }
+    if (!row[key]) row[key] = prefill[key] || newRowId(table);
     if (spec.subject && !row[spec.subject]) { err.textContent = t(`Say which ${spec.subject === O ? 'school' : spec.subject === 'staffSourcedId' ? 'staff member' : 'student'} this is about.`); return; }
     const btn = form.querySelector('button[type=submit]');
     btn.disabled = true;

@@ -55,6 +55,23 @@ async function recent(tableName) {
 
 const labelize = (k) => String(k).replace(/SourcedId$/, '').replace(/([A-Z])/g, ' $1').replace(/^./, (c) => c.toUpperCase());
 
+const CREDIT_TABLES = [
+  ['courses', 'Courses'],
+  ['classes', 'Sections'],
+  ['enrollments', 'Who is in them'],
+  ['line_items', 'Credit-bearing items'],
+  ['academic_sessions', 'Terms'],
+];
+
+/** Courses, sections and the credits they carry — the number the school runs on. */
+export async function credits() {
+  const intro = say(['onboarding_credits', 'onboardingCredits'],
+    'A course, the sections it is taught in, who is enrolled, and how many credits each one carries.');
+  const body = await records(CREDIT_TABLES);
+  body.replaceChild(h('p.lede', intro), body.firstChild);
+  return body;
+}
+
 export async function drills() {
   const box = h('div');
   async function draw() {

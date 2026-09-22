@@ -1,7 +1,7 @@
 // Compliance: what you should be able to show, whether you can show it, and a
 // form that fixes the one row that is missing.
 import { api, apiOptional, h, clear, render, go, panelMissing } from '/app.js';
-import { t, say } from '/js/edition.js';
+import { t, copy, say } from '/js/edition.js';
 import { statusChip, table } from '/js/ui.js';
 import { FORMS, openRecordForm } from '/js/recordform.js';
 import { summaryTiles } from '/js/onboard-records.js';
@@ -19,7 +19,14 @@ export async function show() {
     summaryTiles(st),
     await reportsCard(),
     ...groups(st.checks || []),
+    outro(),
   ));
+}
+
+/** An edition may close the page in its own words. */
+function outro() {
+  const text = copy('compliance_outro', 'complianceOutro');
+  return text ? h('p.lede', { style: 'margin-top:18px' }, text) : null;
 }
 
 /** Checks grouped by pack, then by subject. */

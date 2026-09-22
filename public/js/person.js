@@ -2,7 +2,7 @@
 // student, their family and their teachers write together.
 import { api, h, clear, render, state, go, status, displayName, gradeLabel, outcomePill, when, questionFor, num } from '/app.js';
 import { radar, domainLegend } from '/js/charts.js';
-import { t, Word } from '/js/edition.js';
+import { t, Word, say } from '/js/edition.js';
 import { composer } from '/js/fragments.js';
 import { recordsSection } from '/js/records.js';
 
@@ -23,6 +23,7 @@ export async function show({ args }) {
   const page = h('div',
     header(person, isSelf),
     questions(person),
+    creditsCard(person),
     h('div.grid.two', { style: 'margin-top:18px' }, signalCard(person, dims), metricsCard(person)),
     similarCard(person),
     recordsSection(person.id),
@@ -64,6 +65,23 @@ function questions(p) {
   return h('div.stack', { style: 'margin-top:14px' }, flags.map((f) => h('div.question',
     h('span', { 'aria-hidden': 'true' }, '?'),
     h('div', h('p.q', questionFor(f)), h('p.why', f.reason)))));
+}
+
+/** Credit progress, when the edition's records carry it. */
+function creditsCard(p) {
+  const c = p.credits;
+  if (!c || (c.earned == null && c.needed == null)) return null;
+  const goal = (c.earned || 0) + (c.needed || 0);
+  return h('div.card', { style: 'margin-top:18px' },
+    h('div.grid.three',
+      h('div.stat', h('span.n', String(c.earned ?? '—')), h('span.k', say(['credits_label', 'creditsLabel'], 'Credits earned'))),
+      h('div.stat', h('span.n', String(goal || '—')), h('span.k', say(['credits_goal_label', 'creditsGoalLabel'], 'Credits to graduate'))),
+      c.behindPace != null
+        ? h('div.stat', h('span.n', { style: `color:var(${c.behindPace > 0 ? '--watch' : '--ok'})` }, String(c.behindPace)),
+          h('span.k', t('Behind pace')))
+        : null),
+    goal ? h('progress', { value: String(c.earned || 0), max: String(goal), style: 'margin-top:12px' }) : null,
+  );
 }
 
 function signalCard(p, dims) {

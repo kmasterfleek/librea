@@ -2,7 +2,7 @@
 // compliance rows. Each panel is one scoped SQL query, so a viewer only ever
 // sees their own rows.
 import { api, h, clear, state, when } from '/app.js';
-import { t } from '/js/edition.js';
+import { t, say } from '/js/edition.js';
 import { statusChip } from '/js/ui.js';
 import { openRecordForm } from '/js/recordform.js';
 
@@ -17,7 +17,8 @@ const PANELS = (id) => [
     columns: [['date', 'Date', when], ['code', 'Code'], ['period', 'Period'], ['note', 'Note']],
     summary: (rows) => {
       const present = rows.filter((r) => r.code === 'present').length;
-      return `${present} of ${rows.length} days present in this window.`;
+      // "Days present" is what an alternative school calls this number.
+      return `${say(['attendance_label', 'attendanceLabel'], 'Days present')}: ${present} of ${rows.length} in this window.`;
     },
   },
   {
@@ -104,7 +105,7 @@ function panelCard(panel, studentId) {
       .then((r) => {
         clear(body);
         if (!r.rowCount) { body.appendChild(h('p.empty', { style: 'padding:14px 0' }, t(panel.empty))); return; }
-        if (panel.summary) body.appendChild(h('p.small.muted', { style: 'margin:0 0 8px' }, t(panel.summary(r.rows))));
+        if (panel.summary) body.appendChild(h('p.small.muted', { style: 'margin:0 0 8px' }, panel.summary(r.rows)));
         body.appendChild(table(panel.columns, r.rows));
         body.appendChild(h('p.small.muted', { style: 'margin:8px 0 0' }, `${r.rowCount} ${t(r.rowCount === 1 ? 'row' : 'rows')}${r.truncated ? t(', more not shown') : ''}.`));
       })
