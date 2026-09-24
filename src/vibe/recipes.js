@@ -8,7 +8,7 @@ const schoolWhere = (p, col = 's.schoolSourcedId') => {
   if (!p?.school) return '';
   const v = q(String(p.school).trim());
   // exact id, exact name, or a name that contains the words given ("Duarte High" -> "Duarte High School")
-  return ` AND (${col} = ${v} OR ${col} IN (SELECT sourcedId FROM orgs WHERE lower(name) = lower(${v}) OR lower(name) LIKE '%' || lower(${v}) || '%' OR lower(${v}) LIKE '%' || lower(name) || '%'))`;
+  return ` AND (${col} = ${v} OR ${col} IN (SELECT sourcedId FROM orgs WHERE lower(name) = lower(${v}) OR lower(name) LIKE '%' || lower(${v}) || '%'))`;
 };
 const KINDS = ['record', 'observation', 'self', 'family', 'artifact', 'photo', 'note'];
 const kindWhere = (p) => (p?.kind && KINDS.includes(String(p.kind)) ? ` AND f.kind = ${q(p.kind)}` : '');
