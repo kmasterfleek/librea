@@ -5,11 +5,12 @@ import { HttpError } from '../api/router.js';
 import { canSeeEntity, projectEntity } from '../api/context.js';
 import { DIMENSIONS, DIM_KEYS, FRAGMENT_KINDS, VISIBILITY, STUDENT_METRICS, ENTITY_TYPES } from '../core/schema.js';
 import { runScoped, schemaFor } from '../sql/query.js';
+import { recipeSql, menuFor } from './recipes.js';
 
 /** Minimum group size before an aggregate is reported to an aggregates-only app. */
 export const K_ANON = 5;
 
-const OPS = ['stats', 'people', 'person', 'fragments', 'search', 'similar', 'aggregate', 'addFragment', 'schema', 'me', 'sql', 'sqlSchema'];
+const OPS = ['stats', 'people', 'person', 'fragments', 'search', 'similar', 'aggregate', 'addFragment', 'schema', 'me', 'sql', 'sqlSchema', 'recipe', 'recipes'];
 const GROUPS = ['schoolId', 'grade', 'outcome', 'flag'];
 
 // ---------- boundary validation ----------
@@ -81,6 +82,8 @@ export async function runQuery({ op, args = {} }, ctx, store, deps = {}) {
     case 'addFragment': return addFragment(args, ctx, store);
     case 'sql': return sql(args, scope, deps);
     case 'sqlSchema': return schemaFor(scope);
+    case 'recipe': return recipe(args, scope, deps);
+    case 'recipes': return menuFor(scope);
     default: throw new HttpError(400, `unknown op: ${name}`);
   }
 }
@@ -254,4 +257,15 @@ async function addFragment(args, ctx, store) {
     source: ctx.app ? `app:${ctx.app.slug}` : 'app',
   }, user.username);
   return { fragment: f };
+}
+
+/** A data recipe by id: the SQL is built here, on the server, never in the app. */
+function recipe(args, scope, deps) {
+  if (!deps.sql?.db) { const e = new Error('SQL projection not available'); e.status = 503; throw e; }
+  const id = String(args.id || '');
+  let built;
+  try { built = recipeSql(id, args.params && typeof args.params === 'object' ? args.params : {}); }
+  catch (e) { e.status = 400; throw e; }
+  const out = runScoped(deps.sql.db, built.sql, scope, { limit: Math.min(200, Number(args.limit) || 200) });
+  return { ...out, recipe: id, kind: built.kind };
 }

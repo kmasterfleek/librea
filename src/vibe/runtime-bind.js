@@ -37,7 +37,7 @@ export const RUNTIME_BIND_JS = String.raw`
       var el = document.querySelector('[data-slot="' + b.slot + '"]');
       if (!el) return;
       el.innerHTML = '<p style="opacity:.6;margin:0">Loading…</p>';
-      try { render(el, b.kind, await librea.sql(b.sql, { limit: b.limit || 200 }), b); }
+      try { render(el, b.kind, await librea.recipe(b.recipe, b.params || {}, { limit: b.limit || 200 }), b); }
       catch (e) { el.innerHTML = '<p style="opacity:.65;margin:0">Could not load: ' + esc(e.message) + '</p>'; }
     }));
     if (typeof librea.footer === 'function') librea.footer();

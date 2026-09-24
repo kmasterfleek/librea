@@ -48,6 +48,7 @@ test('every recipe runs under staff and student scopes', async () => {
   const bound = bindSlots(html, { db: sql.db, scope: staff });
   assert.equal(bound.bindings.length, 2);
   assert.equal(bound.bindings[0].kind, 'bar');
+  assert.equal(bound.bindings[0].sql, undefined);
   assert.ok(bound.warnings.some((w) => w.includes('does.not.exist')));
   assert.ok(bound.html.includes('id="librea-bindings"'));
   assert.ok(bound.html.includes('bindAll'));

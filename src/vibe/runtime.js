@@ -53,7 +53,9 @@ export const RUNTIME_JS = String.raw`
     addFragment: function (id, o) { return call('addFragment', Object.assign({ entityId: id }, o || {})); },
     schema: function () { return call('schema', {}); },
     sql: function (query, o) { return call('sql', Object.assign({ sql: query }, o || {})); },
-    sqlSchema: function () { return call('sqlSchema', {}); }
+    sqlSchema: function () { return call('sqlSchema', {}); },
+    recipe: function (id, params, o) { return call('recipe', Object.assign({ id: id, params: params || {} }, o || {})); },
+    recipes: function () { return call('recipes', {}); }
   };
 
   // ---------- tiny DOM helper ----------

@@ -88,7 +88,9 @@ export function parseSlots(html) {
 
 /**
  * Bind slots: resolve every recipe to SQL, prove each query runs under the
- * app's scope (LIMIT 3), and inject the bindings plus the bind runtime.
+ * app's scope (LIMIT 3), and inject the bindings plus the bind runtime. The
+ * bindings name a recipe and its params; the SQL is rebuilt server-side on
+ * every view, so apps never go stale and no SQL lives in the page.
  * Returns { html, bindings, warnings }.
  */
 export function bindSlots(html, { db, scope }) {
@@ -99,7 +101,7 @@ export function bindSlots(html, { db, scope }) {
     let sql, kind;
     try { ({ sql, kind } = recipeSql(s.recipe, s.params)); } catch (e) { warnings.push(`slot ${s.slot}: ${e.message}`); continue; }
     try { runScoped(db, sql, scope, { limit: 3 }); } catch (e) { warnings.push(`slot ${s.slot}: query failed (${e.message})`); continue; }
-    bindings.push({ slot: s.slot, recipe: s.recipe, params: s.params, kind, label: s.label, sql });
+    bindings.push({ slot: s.slot, recipe: s.recipe, params: s.params, kind, label: s.label });
   }
   if (!bindings.length) warnings.push('the design declared no usable data slots');
   const inject = `\n<script id="librea-bindings" type="application/json">${JSON.stringify(bindings).replace(/</g, '\\u003c')}</script>\n<script>${RUNTIME_BIND_JS}</script>\n`;
