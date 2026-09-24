@@ -221,3 +221,11 @@ details > summary { cursor: pointer; font-size: .9rem; color: var(--ink-soft); p
 .checkrow { border: 1px solid var(--line); border-left: 3px solid var(--line); border-radius: 0 9px 9px 0; padding: 10px 13px; }
 .checkrow:has(.statuschip) { border-left-color: var(--line); }
 h4 { font-size: .88rem; margin: 1em 0 .3em; color: var(--ink-soft); }
+
+/* Get-started guide */
+.guide.card { margin: 0 0 16px; padding: 12px 16px; border-left: 4px solid var(--accent); }
+.guide.off { margin: 0 0 8px; text-align: right; }
+.guide-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; }
+.guide-grid { display: grid; gap: 12px 18px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.guide-grid b { display: block; margin-bottom: 2px; font-size: .9rem; }
+.guide-grid p { margin: 0; font-size: .9rem; color: var(--ink-soft); line-height: 1.45; }

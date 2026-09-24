@@ -3,7 +3,9 @@
 
 import { loadEdition, edition, feature, t } from '/js/edition.js';
 
-export const state = { user: null, scope: null, schema: null, ready: false };
+import { guideCard } from '/js/guide.js';
+
+export const state = { user: null, scope: null, schema: null, ready: false, route: 'home' };
 export { edition, feature, t };
 
 // ---------- DOM ----------
@@ -106,14 +108,15 @@ export const questionFor = (flag) => QUESTIONS[flag.key] || `${flag.reason} — 
 
 const view = () => document.getElementById('view');
 
-export function render(node) {
+export function render(node, { guide = true } = {}) {
   const v = clear(view());
+  if (guide && state.user && state.route) { const g = guideCard(); if (g) v.appendChild(g); }
   v.appendChild(node);
   window.scrollTo(0, 0);
 }
 
 export function loading(label = 'Loading…') {
-  render(h('p.empty', label));
+  render(h('p.empty', label), { guide: false });
 }
 
 export function panelMissing(title, detail) {
@@ -165,6 +168,7 @@ async function route() {
     render(h('div.card', h('h2', 'Not part of this edition'), h('p.muted', `${edition().name} does not include this page.`)));
     return;
   }
+  state.route = r.path;
   markNav(r.path);
   loading();
   try {
