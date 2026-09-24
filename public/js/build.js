@@ -17,6 +17,8 @@ export async function show({ query }) {
   }
   const provider = info.provider || info;
   const whatLeaves = info.whatLeaves;
+  const design = await apiOptional('/api/vibe/design');
+  const canDesign = !!design?.available;
   let remix = null;
   if (query.remix) remix = await apiOptional('/api/apps/' + encodeURIComponent(query.remix));
 
@@ -24,6 +26,7 @@ export async function show({ query }) {
   if (remix?.app) prompt.value = remix.app.prompt || '';
   const title = h('input', { type: 'text', id: 'title', placeholder: 'Give it a name', value: remix?.app?.title || '' });
   const includePii = h('input', { type: 'checkbox', id: 'pii' });
+  const designMode = h('input', { type: 'checkbox', id: 'design', checked: canDesign });
   const err = h('p.err', { role: 'alert' });
   const out = h('div');
   const code = h('pre.stream', { id: 'code', tabindex: '0' });
@@ -40,8 +43,10 @@ export async function show({ query }) {
       h('div.inline-form', { style: 'margin-top:14px' },
         h('div', h('label', { for: 'title' }, t('Name')), title),
         canPii ? h('label.check', { style: 'flex:0 1 auto' }, includePii, 'Include names') : null,
+        canDesign ? h('label.check', { style: 'flex:0 1 auto' }, designMode, t('Design first (structure by ' + (design.model || 'the design model') + ', data bound here)')) : null,
         generate),
       h('p.small.muted', { style: 'margin-bottom:0' }, providerLine(provider, whatLeaves)),
+      canDesign ? h('p.small.muted', { style: 'margin:4px 0 0' }, 'Design first: ' + (design.whatLeaves?.statement || '')) : null,
       neverSends(whatLeaves),
       err),
     out,
@@ -60,7 +65,11 @@ export async function show({ query }) {
         title: title.value || undefined,
         slug: remix?.app?.slug || query.slug || undefined,
         includePii: canPii && includePii.checked,
-      }, (text) => { code.textContent += text; code.scrollTop = code.scrollHeight; });
+        mode: canDesign && designMode.checked ? 'design' : 'direct',
+      }, (text) => { code.textContent += text; code.scrollTop = code.scrollHeight; }, undefined, (bound) => {
+        const names = (bound.slots || []).map((b) => b.recipe).join(', ');
+        status(names ? 'Bound ' + bound.slots.length + ' data slot(s) on this machine: ' + names : 'No data slots were declared by the design.');
+      });
       status('Done.');
       out.appendChild(result(done));
     } catch (ex) { err.textContent = ex.message; status('', false); }
@@ -88,7 +97,7 @@ function neverSends(wl) {
 }
 
 /** POST + read the SSE body as a stream. EventSource cannot POST, so we parse it ourselves. */
-async function stream(body, onChunk, onStart) {
+async function stream(body, onChunk, onStart, onBound) {
   const res = await fetch('/api/vibe/generate', {
     method: 'POST', credentials: 'same-origin',
     headers: { 'content-type': 'application/json', accept: 'text/event-stream' },
@@ -119,6 +128,7 @@ async function stream(body, onChunk, onStart) {
       try { data = JSON.parse(dataLines.join('\n')); } catch { data = { text: dataLines.join('\n') }; }
       if (event === 'chunk') onChunk(data.text || '');
       else if (event === 'start') onStart?.(data);
+      else if (event === 'bound') onBound?.(data);
       else if (event === 'done') done = data;
       else if (event === 'error') failure = data.error || data.message || 'generation failed';
     }

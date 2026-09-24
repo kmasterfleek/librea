@@ -5,17 +5,19 @@ import { requireUser } from '../api/context.js';
 import { AppStore, slugify, uniqueSlug, isValidSlug, defaultScopeFor, scopeBadge, normalizeScope } from './apps.js';
 import { getProvider, providerInfo, providerName, whatLeaves } from './providers.js';
 import { buildSystemPrompt, buildMessages, extractHtml } from './prompt.js';
+import { streamDesign, bindSlots, designAvailable, designModel, designWhatLeaves } from './design.js';
 import { runQuery } from './query.js';
 import { RUNTIME_JS } from './runtime.js';
 import { shellPage, signInPage } from './shell.js';
 
 const CSP = "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; connect-src 'none'; frame-ancestors 'self'";
 
-export function register(router, { store, dataDir, sql }) {
+export function register(router, {store, dataDir, sql, edition }) {
   const apps = new AppStore(store, dataDir);
 
   // ---- what the provider is, and what leaves the building ----
   router.get('/api/vibe/provider', () => ({ provider: providerInfo(), whatLeaves: whatLeaves() }));
+  router.get('/api/vibe/design', () => ({ available: designAvailable(), model: designModel(), whatLeaves: designWhatLeaves() }));
   router.get('/api/vibe/runtime.js', (ctx) => {
     ctx.res.writeHead(200, { 'content-type': 'text/javascript; charset=utf-8', 'cache-control': 'no-store' });
     ctx.res.end(RUNTIME_JS);
@@ -51,19 +53,28 @@ export function register(router, { store, dataDir, sql }) {
     keepalive.unref?.();
 
     try {
-      const provider = getProvider();
-      const info = provider.info;
-      send('start', { slug, title, provider: info.name, model: info.model, offline: info.offline, remix: !!prior, scope, scopeBadge: scopeBadge(scope) });
-      const system = buildSystemPrompt({ scope: { ...ctx.scope, ...scope }, viewer: user, appTitle: title });
-      const messages = buildMessages(prompt, priorHtml);
+      const designMode = String(body.mode || '') === 'design';
+      if (designMode && !designAvailable()) throw new HttpError(400, 'Design mode needs ANTHROPIC_API_KEY on the server.');
+      const provider = designMode ? null : getProvider();
+      const info = designMode ? { name: 'design', model: designModel(), offline: false } : provider.info;
+      send('start', { slug, title, provider: info.name, model: info.model, offline: info.offline, remix: !!prior, scope, scopeBadge: scopeBadge(scope), mode: designMode ? 'design' : 'direct' });
       let text = '';
-      for await (const chunk of provider.generate({ system, messages, title })) {
-        text += chunk;
-        send('chunk', { text: chunk });
+      let html, warnings, bindings = null;
+      if (designMode) {
+        // Stage 1: the design model structures the page from the recipe menu (no schema, no records).
+        for await (const chunk of streamDesign({ prompt, priorHtml, edition, scope: { ...ctx.scope, ...scope }, viewerRole: user.role })) { text += chunk; send('chunk', { text: chunk }); }
+        // Stage 2: bind every slot to scoped SQL here, on this machine.
+        const bound = bindSlots(text, { db: sql?.db, scope: { ...ctx.scope, ...scope } });
+        html = bound.html; bindings = bound.bindings; warnings = [...bound.warnings, ...auditHtml(html)];
+        send('bound', { slots: bindings.map((b) => ({ slot: b.slot, recipe: b.recipe, kind: b.kind })), warnings: bound.warnings });
+      } else {
+        const system = buildSystemPrompt({ scope: { ...ctx.scope, ...scope }, viewer: user, appTitle: title });
+        const messages = buildMessages(prompt, priorHtml);
+        for await (const chunk of provider.generate({ system, messages, title })) { text += chunk; send('chunk', { text: chunk }); }
+        html = extractHtml(text);
+        warnings = auditHtml(html);
       }
-      const html = extractHtml(text);
-      const warnings = auditHtml(html);
-      const app = apps.save({ slug, title, prompt, html, provider: info.name, model: info.model, scope, user, warnings, templateGenerated: !!provider.template });
+      const app = apps.save({ slug, title, prompt, html, provider: info.name, model: info.model, scope, user, warnings, templateGenerated: !!provider?.template, design: designMode ? { model: info.model, slots: bindings.map((b) => ({ slot: b.slot, recipe: b.recipe })) } : undefined });
       send('done', { slug: app.slug, version: app.version, title: app.title, provider: info.name, model: info.model, published: app.published, url: `/a/${app.slug}`, scopeBadge: scopeBadge(app.scope), warnings });
     } catch (err) {
       send('error', { error: err.message || 'generation failed' });
