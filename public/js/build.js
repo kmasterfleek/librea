@@ -98,14 +98,22 @@ function neverSends(wl) {
 
 /** POST + read the SSE body as a stream. EventSource cannot POST, so we parse it ourselves. */
 async function stream(body, onChunk, onStart, onBound) {
-  const res = await fetch('/api/vibe/generate', {
+  const attempt = () => fetch('/api/vibe/generate', {
     method: 'POST', credentials: 'same-origin',
     headers: { 'content-type': 'application/json', accept: 'text/event-stream' },
     body: JSON.stringify(body),
   });
+  let res = await attempt();
+  // A 502/503/504 is the host, not the app: usually a restart. Wait and try once more.
+  if ([502, 503, 504].includes(res.status)) {
+    status('The server did not answer (it may be restarting). Trying again in 8 seconds…');
+    await new Promise((r) => setTimeout(r, 8000));
+    res = await attempt();
+  }
   if (!res.ok || !res.body) {
-    let msg = `${res.status} ${res.statusText}`;
+    let msg = `${res.status} ${res.statusText}`.trim();
     try { msg = (await res.json()).error || msg; } catch { /* not json */ }
+    if ([502, 503, 504].includes(res.status)) msg = 'The server did not respond (' + res.status + '). It is probably restarting after an update; wait a minute and press Generate again. Nothing was lost.';
     throw new Error(msg);
   }
   const reader = res.body.getReader();
