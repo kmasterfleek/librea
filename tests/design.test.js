@@ -33,6 +33,9 @@ test('every recipe runs under staff and student scopes', async () => {
   assert.equal(runScoped(sql.db, recipeSql('me.metrics').sql, stu).rowCount, 1);
   assert.equal(runScoped(sql.db, recipeSql('students.count', { school: 'a' }).sql, staff).rows[0].students, 4); // school by name, any case
   assert.equal(runScoped(sql.db, recipeSql('students.count', { school: 'SCH-A' }).sql, staff).rows[0].students, 4);
+  store.upsertEntity({ id: 'SCH-DHS', type: 'school', name: 'Duarte High School' });
+  store.upsertEntity({ id: 'STU-9', type: 'student', grade: 11, schoolId: 'SCH-DHS' });
+  assert.equal(runScoped(sql.db, recipeSql('students.count', { school: 'Duarte High' }).sql, staff).rows[0].students, 1); // partial name
   // the menu for a scoped viewer only offers own-record recipes
   assert.ok(menuFor(stu).every((m) => m.id.startsWith('me.') || ['students.count', 'fragments.recent'].includes(m.id)));
   assert.ok(menuFor(staff).length > menuFor(stu).length);
@@ -58,7 +61,8 @@ test('every recipe runs under staff and student scopes', async () => {
 });
 
 test('the design prompt carries the menu and the look, never the schema', () => {
-  const p = designSystemPrompt({ edition: { name: 'Duarte Unified AI Environment', theme: { accent: '#0f2f6b', logoText: 'DUARTE' } }, scope: scopeFor({ role: 'admin' }) });
+  const p = designSystemPrompt({ edition: { name: 'Duarte Unified AI Environment', theme: { accent: '#0f2f6b', logoText: 'DUARTE' } }, scope: scopeFor({ role: 'admin' }), schools: ['Duarte High School'] });
+  assert.ok(p.includes('Duarte High School'));
   assert.ok(p.includes('attendance.rate_by_school'));
   assert.ok(p.includes('#0f2f6b'));
   assert.ok(!/sourcedId|schoolSourcedId|CREATE TABLE|studentSourcedId/.test(p));

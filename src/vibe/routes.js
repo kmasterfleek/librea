@@ -62,7 +62,8 @@ export function register(router, {store, dataDir, sql, edition }) {
       let html, warnings, bindings = null;
       if (designMode) {
         // Stage 1: the design model structures the page from the recipe menu (no schema, no records).
-        for await (const chunk of streamDesign({ prompt, priorHtml, edition, scope: { ...ctx.scope, ...scope }, viewerRole: user.role })) { text += chunk; send('chunk', { text: chunk }); }
+        const schools = store.listEntities({ type: 'school' }).map((o) => o.name).filter(Boolean);
+        for await (const chunk of streamDesign({ prompt, priorHtml, edition, scope: { ...ctx.scope, ...scope }, viewerRole: user.role, schools })) { text += chunk; send('chunk', { text: chunk }); }
         // Stage 2: bind every slot to scoped SQL here, on this machine.
         const bound = bindSlots(text, { db: sql?.db, scope: { ...ctx.scope, ...scope } });
         html = bound.html; bindings = bound.bindings; warnings = [...bound.warnings, ...auditHtml(html)];

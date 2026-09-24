@@ -21,7 +21,7 @@ export function designWhatLeaves() {
   };
 }
 
-export function designSystemPrompt({ edition = {}, scope = {}, viewerRole = 'staff' } = {}) {
+export function designSystemPrompt({ edition = {}, scope = {}, viewerRole = 'staff', schools = [] } = {}) {
   const menu = menuFor(scope);
   const theme = edition.theme || {};
   return `You are a senior product designer producing a finished, single-file web page for ${edition.name || 'Librea'}, a school's own information system. You design the structure and the look. You do not have, and must not invent, any data: every number, chart, table, or list of records is a DATA SLOT that the school's own server fills in later from its own records.
@@ -39,7 +39,7 @@ Choose RECIPE_ID only from this menu. Each recipe has a fixed kind that decides 
 
 ${menu.map((m) => `- ${m.id}  [${m.kind}]  ${m.describe}${m.params ? `  params: ${m.params}` : ''}`).join('\n')}
 
-Rules: at least one slot per section that claims to show data; never write placeholder numbers or fake names into the HTML; a caption may say what the chart shows but not what it says. Viewer role: ${viewerRole}${['student', 'family'].includes(scope.role) ? ' (sees only their own records; use me.* recipes)' : ''}.`;
+${schools.length ? `Schools in this ${edition.vocabulary?.district || 'district'} (use these exact names for a school param): ${schools.join('; ')}.\n\n` : ''}Rules: at least one slot per section that claims to show data; never write placeholder numbers or fake names into the HTML; a caption may say what the chart shows but not what it says. Viewer role: ${viewerRole}${['student', 'family'].includes(scope.role) ? ' (sees only their own records; use me.* recipes)' : ''}.`;
 }
 
 export function designMessages(prompt, priorHtml) {
@@ -50,7 +50,7 @@ export function designMessages(prompt, priorHtml) {
 }
 
 /** Stream the design from Anthropic. Yields text chunks. */
-export async function* streamDesign({ prompt, priorHtml, edition, scope, viewerRole }) {
+export async function* streamDesign({ prompt, priorHtml, edition, scope, viewerRole, schools = [] }) {
   if (!designAvailable()) throw new Error('ANTHROPIC_API_KEY is not set; the design step needs it.');
   const { default: Anthropic } = await import('@anthropic-ai/sdk');
   const client = new Anthropic();
@@ -59,7 +59,7 @@ export async function* streamDesign({ prompt, priorHtml, edition, scope, viewerR
     max_tokens: 32000,
     thinking: { type: 'adaptive' },
     output_config: { effort: 'medium' },
-    system: [{ type: 'text', text: designSystemPrompt({ edition, scope, viewerRole }), cache_control: { type: 'ephemeral' } }],
+    system: [{ type: 'text', text: designSystemPrompt({ edition, scope, viewerRole, schools }), cache_control: { type: 'ephemeral' } }],
     messages: designMessages(prompt, priorHtml),
   });
   for await (const event of stream) {

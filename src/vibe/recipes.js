@@ -4,7 +4,12 @@
 const q = (s) => `'${String(s).replace(/'/g, "''")}'`;
 const lim = (p, d = 20) => Math.max(1, Math.min(200, Number(p?.limit) || d));
 // A design model names schools the way people do; accept an id or a name (case-insensitive).
-const schoolWhere = (p, col = 's.schoolSourcedId') => (p?.school ? ` AND (${col} = ${q(p.school)} OR ${col} IN (SELECT sourcedId FROM orgs WHERE lower(name) = lower(${q(p.school)})))` : '');
+const schoolWhere = (p, col = 's.schoolSourcedId') => {
+  if (!p?.school) return '';
+  const v = q(String(p.school).trim());
+  // exact id, exact name, or a name that contains the words given ("Duarte High" -> "Duarte High School")
+  return ` AND (${col} = ${v} OR ${col} IN (SELECT sourcedId FROM orgs WHERE lower(name) = lower(${v}) OR lower(name) LIKE '%' || lower(${v}) || '%' OR lower(${v}) LIKE '%' || lower(name) || '%'))`;
+};
 const KINDS = ['record', 'observation', 'self', 'family', 'artifact', 'photo', 'note'];
 const kindWhere = (p) => (p?.kind && KINDS.includes(String(p.kind)) ? ` AND f.kind = ${q(p.kind)}` : '');
 const gradeWhere = (p, col = 's.grade') => (p?.grade != null && p.grade !== '' ? ` AND ${col} = ${Number(p.grade)}` : '');
