@@ -4,6 +4,8 @@
 const q = (s) => `'${String(s).replace(/'/g, "''")}'`;
 const lim = (p, d = 20) => Math.max(1, Math.min(200, Number(p?.limit) || d));
 const schoolWhere = (p, col = 's.schoolSourcedId') => (p?.school ? ` AND ${col} = ${q(p.school)}` : '');
+const KINDS = ['record', 'observation', 'self', 'family', 'artifact', 'photo', 'note'];
+const kindWhere = (p) => (p?.kind && KINDS.includes(String(p.kind)) ? ` AND f.kind = ${q(p.kind)}` : '');
 const gradeWhere = (p, col = 's.grade') => (p?.grade != null && p.grade !== '' ? ` AND ${col} = ${Number(p.grade)}` : '');
 
 /**
@@ -29,7 +31,7 @@ export const RECIPES = {
   'plans.due': { kind: 'table', describe: 'Learning plans (IEP, 504, ILP, BSP, transition) with the soonest review dates, overdue first.', params: 'type?, limit?', sql: (p) => `SELECT p.studentSourcedId AS id, p.type, p.title, p.reviewDate, p.owner FROM learning_plans p WHERE p.status = 'active'${p?.type ? ` AND p.type = ${q(p.type)}` : ''} ORDER BY p.reviewDate LIMIT ${lim(p)}` },
   'services.by_type': { kind: 'bar', describe: 'Students receiving each service (IEP, 504, ELL, FRL, counseling).', params: '', sql: () => `SELECT sv.type, count(distinct sv.studentSourcedId) AS students FROM services sv GROUP BY sv.type ORDER BY students DESC` },
   'credits.by_grade': { kind: 'bar', describe: 'Average credits earned per student by grade (from credit-bearing results).', params: '', sql: () => `SELECT 'Grade ' || s.grade AS grade, round(avg(t.credits), 1) AS avg_credits FROM (SELECT r.studentSourcedId, sum(r.score) AS credits FROM results r JOIN line_items li ON li.sourcedId = r.lineItemSourcedId WHERE li.category = 'credit' GROUP BY r.studentSourcedId) t JOIN students s ON s.sourcedId = t.studentSourcedId GROUP BY s.grade ORDER BY s.grade` },
-  'fragments.recent': { kind: 'list', describe: 'The most recent things written about or by students (observations, reflections, family notes), as text.', params: 'kind?, limit?', sql: (p) => `SELECT f.text FROM fragments f WHERE 1=1${p?.kind ? ` AND f.kind = ${q(p.kind)}` : ''} ORDER BY f.createdAt DESC LIMIT ${lim(p, 10)}` },
+  'fragments.recent': { kind: 'list', describe: 'The most recent things written about or by students, as text. kind is one of: observation (staff), self (student), family, note (staff-only), artifact (student work), record (imported summary); omit kind for all.', params: 'kind?, limit?', sql: (p) => `SELECT f.text FROM fragments f WHERE 1=1${kindWhere(p)} ORDER BY f.createdAt DESC LIMIT ${lim(p, 10)}` },
   'artifacts.by_grade': { kind: 'bar', describe: 'Portfolio artifacts (student work) by grade.', params: '', sql: () => `SELECT 'Grade ' || s.grade AS grade, count(*) AS artifacts FROM fragments f JOIN students s ON s.sourcedId = f.entityId WHERE f.kind = 'artifact' GROUP BY s.grade ORDER BY s.grade` },
   'projects.by_department': { kind: 'bar', describe: 'Civic or project-based work grouped by partner department (from artifact fragments tagged [Department]).', params: '', sql: () => `SELECT substr(f.text, instr(f.text,'[')+1, instr(f.text,']')-instr(f.text,'[')-1) AS department, count(*) AS projects FROM fragments f WHERE f.kind = 'artifact' AND f.text LIKE '%[%]%' GROUP BY department ORDER BY projects DESC` },
   'me.attendance': { kind: 'table', describe: 'The viewer\'s own attendance rows (or their children\'s): date, code.', params: 'limit?', sql: (p) => `SELECT a.studentSourcedId AS id, a.date, a.code FROM attendance a ORDER BY a.date DESC LIMIT ${lim(p, 30)}` },
