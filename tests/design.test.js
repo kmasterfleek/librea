@@ -31,6 +31,8 @@ test('every recipe runs under staff and student scopes', async () => {
   assert.equal(runScoped(sql.db, recipeSql('enrollment.transfers_out').sql, staff).rows[0].destination, 'Elsewhere USD');
   assert.equal(runScoped(sql.db, recipeSql('projects.by_department').sql, staff).rows[0].department, 'Parks');
   assert.equal(runScoped(sql.db, recipeSql('me.metrics').sql, stu).rowCount, 1);
+  assert.equal(runScoped(sql.db, recipeSql('students.count', { school: 'a' }).sql, staff).rows[0].students, 4); // school by name, any case
+  assert.equal(runScoped(sql.db, recipeSql('students.count', { school: 'SCH-A' }).sql, staff).rows[0].students, 4);
   // the menu for a scoped viewer only offers own-record recipes
   assert.ok(menuFor(stu).every((m) => m.id.startsWith('me.') || ['students.count', 'fragments.recent'].includes(m.id)));
   assert.ok(menuFor(staff).length > menuFor(stu).length);

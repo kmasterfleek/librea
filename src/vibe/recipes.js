@@ -3,7 +3,8 @@
 // recipe into scoped SQL here, on the district's own machine.
 const q = (s) => `'${String(s).replace(/'/g, "''")}'`;
 const lim = (p, d = 20) => Math.max(1, Math.min(200, Number(p?.limit) || d));
-const schoolWhere = (p, col = 's.schoolSourcedId') => (p?.school ? ` AND ${col} = ${q(p.school)}` : '');
+// A design model names schools the way people do; accept an id or a name (case-insensitive).
+const schoolWhere = (p, col = 's.schoolSourcedId') => (p?.school ? ` AND (${col} = ${q(p.school)} OR ${col} IN (SELECT sourcedId FROM orgs WHERE lower(name) = lower(${q(p.school)})))` : '');
 const KINDS = ['record', 'observation', 'self', 'family', 'artifact', 'photo', 'note'];
 const kindWhere = (p) => (p?.kind && KINDS.includes(String(p.kind)) ? ` AND f.kind = ${q(p.kind)}` : '');
 const gradeWhere = (p, col = 's.grade') => (p?.grade != null && p.grade !== '' ? ` AND ${col} = ${Number(p.grade)}` : '');
@@ -14,7 +15,7 @@ const gradeWhere = (p, col = 's.grade') => (p?.grade != null && p.grade !== '' ?
  * scoped views. Column order matters: charts use column 1 as label, 2 as value.
  */
 export const RECIPES = {
-  'students.count': { kind: 'stat', describe: 'How many students are enrolled (optionally in one school or grade).', params: 'school?, grade?', sql: (p) => `SELECT count(*) AS students FROM students s WHERE 1=1${schoolWhere(p)}${gradeWhere(p)}` },
+  'students.count': { kind: 'stat', describe: 'How many students are enrolled (optionally in one school or grade).', params: 'school? (name or id), grade?', sql: (p) => `SELECT count(*) AS students FROM students s WHERE 1=1${schoolWhere(p)}${gradeWhere(p)}` },
   'students.by_school': { kind: 'bar', describe: 'Students per school.', params: '', sql: () => `SELECT o.name AS school, count(*) AS students FROM students s JOIN orgs o ON o.sourcedId = s.schoolSourcedId GROUP BY o.name ORDER BY students DESC` },
   'students.by_grade': { kind: 'bar', describe: 'Students per grade.', params: 'school?', sql: (p) => `SELECT CASE s.grade WHEN 0 THEN 'K' WHEN -1 THEN 'PK' ELSE 'Grade ' || s.grade END AS grade, count(*) AS students FROM students s WHERE 1=1${schoolWhere(p)} GROUP BY s.grade ORDER BY s.grade` },
   'students.by_outcome': { kind: 'bar', describe: 'Students by outcome label (on-track, watch, high-risk, resilient, hidden-risk, intervention-success).', params: 'school?, grade?', sql: (p) => `SELECT coalesce(s.outcome,'unknown') AS outcome, count(*) AS students FROM students s WHERE 1=1${schoolWhere(p)}${gradeWhere(p)} GROUP BY s.outcome ORDER BY students DESC` },
