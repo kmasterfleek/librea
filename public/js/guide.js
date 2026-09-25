@@ -136,7 +136,7 @@ export function guideCard() {
       return;
     }
     wrap.className = 'guide card';
-    wrap.append(
+    wrap.append(...[
       h('div.guide-head', h('span', h('span.chip', 'Get started'), role ? h('span.small.muted', { style: 'margin-left:8px' }, t(`as a ${ROLE_LABEL[role] || role}`)) : null), h('button.linkish', { onclick: () => { setHidden(page, true); draw(); } }, 'Got it, hide this')),
       h('div.guide-grid',
         h('div', h('b', t('The layout')), h('p', t(g.layout))),
@@ -144,7 +144,7 @@ export function guideCard() {
         h('div', h('b', t('How to get around')), h('p', t(g.navigate))),
       ),
       page === 'home' && ed.id !== 'district' ? h('p.small.muted', { style: 'margin:6px 0 0' }, `${ed.name}: ${ed.tagline}`) : null,
-    );
+    ].filter(Boolean)); // Element.append(null) would print the word "null"
   };
   draw();
   return wrap;

@@ -53,11 +53,14 @@ function merge(raw) {
 
 function applyTheme(theme = {}) {
   const root = document.documentElement;
+  // Dark edition colors (e.g. a navy) disappear on the dark theme: lift them toward white there.
+  const dark = document.documentElement.dataset.theme === 'dark' || (document.documentElement.dataset.theme !== 'light' && window.matchMedia?.('(prefers-color-scheme: dark)').matches);
+  const lift = (c) => (dark ? `color-mix(in srgb, ${c} 45%, #ffffff)` : c);
   if (theme.accent) {
-    root.style.setProperty('--accent', theme.accent);
-    root.style.setProperty('--accent-soft', `color-mix(in srgb, ${theme.accent} 18%, var(--paper))`);
+    root.style.setProperty('--accent', lift(theme.accent));
+    root.style.setProperty('--accent-soft', `color-mix(in srgb, ${theme.accent} ${dark ? 35 : 18}%, var(--paper))`);
   }
-  if (theme.accent2) root.style.setProperty('--accent2', theme.accent2);
+  if (theme.accent2) root.style.setProperty('--accent2', lift(theme.accent2));
   const word = document.querySelector('.wordmark');
   if (word) word.textContent = theme.logoText || current.name;
   document.title = current.name || 'Librea';
